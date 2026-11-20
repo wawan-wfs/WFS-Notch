@@ -1,0 +1,39 @@
+# Rust/Tauri build output
+/02_APP/src-tauri/target/
+**/target/
+/02_APP/src-tauri/gen/schemas/
+
+# Local data / secrets (never push)
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.pem
+*.key
+*.cer
+*.crt
+*.p8
+**/state.json
+**/state.json.bak
+**/backups/
+
+# Local tooling / temporary files
+__pycache__/
+.pytest_cache/
+.playwright/
+node_modules/
+*.log
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Original reference EXE binaries must not be republished
+Poni_1.5.0_portable.exe
+Poni_1.5.0_x64-setup.exe
+
+# Generated root-level binary artifacts
+/build-evidence/
