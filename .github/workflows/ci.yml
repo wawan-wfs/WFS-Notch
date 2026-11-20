@@ -2,9 +2,8 @@ name: WFS Notch — Windows CI & Browser Audit
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
   pull_request:
+    types: [opened, reopened]
     branches: [main]
 
 # No repository writes, privileged events, remote shell, or tunnel in CI.
