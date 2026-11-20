@@ -1,39 +1,25 @@
-# Rust/Tauri build output
-/02_APP/src-tauri/target/
-**/target/
-/02_APP/src-tauri/gen/schemas/
-
-# Local data / secrets (never push)
+# Build output
+target/
+src-tauri/target/
+node_modules/
+dist/
+*.pdb
+# Development + secrets
 .env
 .env.*
 !.env.example
-*.pfx
-*.p12
-*.pem
-*.key
-*.cer
-*.crt
-*.p8
-**/state.json
-**/state.json.bak
-**/backups/
-
-# Local tooling / temporary files
-__pycache__/
-.pytest_cache/
-.playwright/
-node_modules/
-*.log
-*.tmp
-*.bak
-.DS_Store
-Thumbs.db
+*.local
 .vscode/
 .idea/
-
-# Original reference EXE binaries must not be republished
-Poni_1.5.0_portable.exe
-Poni_1.5.0_x64-setup.exe
-
-# Generated root-level binary artifacts
-/build-evidence/
+# Generated evidence/artifacts
+test-results/
+build-evidence/
+playwright-report/
+# Private research/source binaries do not belong in product repository
+Poni*.exe
+Poni*.msi
+private-rea-audit/
+audit-private/
+rea-evidence/
+craft-anything-workspace/
+*.dmp

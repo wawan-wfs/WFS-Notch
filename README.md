@@ -1,85 +1,82 @@
-# WFS Notch — Phase 3 / v0.3.0
+# WFS Notch
 
-**GitHub CI / publisher instructions:** [README_GITHUB.md](README_GITHUB.md). The codebase is prepared for GitHub Actions, but no GitHub-hosted CI result is claimed.
+**A private, local-first desktop companion for Windows 10/11 — built with Rust and Tauri 2.**
 
-![WFS Notch original brand](05_BRANDING/WFS_Notch_Logo_Preview.png)
+![WFS Notch](assets/branding/wfs-notch-wordmark.png)
 
-**Status: Phase 3 source delivery — browser tests PASS, static audit PASS, JavaScript syntax PASS. Native Rust compilation, Windows 10/11 hardware telemetry, and installer validation NOT RUN. This is NOT a signed, production-ready Windows release.**
+WFS Notch brings an expandable top-edge panel with a calendar, tasks, notes, focus timers, native Windows media controls, device information and optional private desktop reminders. It does not require an account.
 
-WFS Notch is an original implementation built with a Rust + Tauri 2 backend and an HTML/CSS/JavaScript WebView front end. It does not redistribute or modify the supplied Poni binaries. It targets Windows 10/11 x64.
+## Features
 
-## Features delivered through Phase 3
+- Lightweight notch with opt-in Win32 fullscreen-aware topmost handling, stable unique display-name selection across screen rearrangement with fail-closed pinned-monitor disconnection (no intentional relocation to a different monitor), safe legacy coordinate fallback, DPI/topology re-positioning, tray and autostart.
+- Two retained local state recovery generations (`state.json.bak` and `state.json.bak.prev`) with startup fallback when primary/latest backup are unreadable; no destructive installer migration.
+- Local accessibility preferences: compact or comfortable density, optional minimal motion, high contrast and safe reset; stored in the same private native JSON with backwards compatibility.
+- Notes backup restore advances revisions for shared IDs so stale editor windows cannot overwrite restored content.
+- Local Notes JSON preview/import/export (strict 1 MiB / 250-note snapshots, dedup by ID and atomic append-only import), explicit user copy/paste with no network.
+- Conflict-safe Notes: versioned optimistic saves, local crash-recoverable drafts, explicit reload or save-as-new resolution without overwriting newer edits. No cloud sync.
+- Private local Notes tags (up to 8), tag-aware search and an accessible filter; older notes load without destructive migration.
+- Task editor with local priority (low/normal/high), optional due date, safe update preserving task ID/completion, and non-destructive legacy migration (separately opt-in local task due Windows reminders with at-most-once enqueue ledger); note tools; calendar with safe RFC5545 single-occurrence RECURRENCE-ID overrides, original UID/stable instance identity and fail-closed range/DST handling; UTC/IANA, true all-day DATE and timed exclusive DTEND/DURATION, multi-day view, bounded DAILY/WEEKLY/MONTHLY/YEARLY recurrence with BYDAY/BYMONTH/BYMONTHDAY/WKST, EXDATE/RDATE exceptions, locally persisted versioned source rules, durable cancellation history, scoped group rename/delete, and a guarded one-time whole-day move of untouched UTC/all-day recurring instances; wellness and focus timers.
+- Task history stays local with 25, 100, 200 or Off retention. Undo the latest retained completion of an unchanged task without replaying its reminder. Restoring a backup does not bring back completion rows removed from active history. Existing backup files are not rewritten.
+- Windows GSMTC media sessions: selected-player metadata, capability-checked playback controls, artwork when supplied by the player and bounded progress. Shared application IDs (e.g. multiple browser tabs) are now explicitly flagged as ambiguous and cannot receive per-session playback commands; use the unique app session or system media keys instead.
+- Native opt-in calendar and separately consented task due notifications with a Rust scheduler, durable at-most-once enqueue ledger, persistent bounded retry journal (up to three sender attempts), and Windows toast setting diagnostic that run independently of the hidden notch panel. WFS Notch never reads other applications' notifications. Event titles stay private unless enabled, sender error logs omit titles and imported UIDs, and WFS-only Pause Reminders is available. A successful OS enqueue is not proof a toast was displayed, and ambiguous Windows failures can still lead to a bounded duplicate attempt.
+- Local repeating tasks advance on completion without creating duplicates. Use elapsed 24-hour/seven-day intervals, or enter an IANA timezone to keep the same local clock time across daylight saving changes. Notification consent does not change.
+- Find any of the 16 modules from the header or Ctrl/Command+K. The searchable finder supports keyboard navigation, live result counts and focus return without bypassing pending Notes saves.
+- Optional city weather includes matching city selection, current conditions, local hourly and seven-day forecasts. Only an explicit weather request contacts Open-Meteo.
+- Optional local Pomodoro work/break cycles with pause/resume and a long break after four completed focus sessions. One-shot focus remains the default.
+- The independent countdown offers three editable presets, plus one- and five-minute increments. Presets are preserved when resetting the timer.
+- Read-only local disk/network/CPU/RAM inventory, theme colors and accessible keyboard navigation.
+- Local JSON with backup and restore.
 
-| Module | Scope in this source | Verification |
-| --- | --- | --- |
-| Always-on-top notch | compact/expanded overlay and pin, position on current monitor | Code only; native Windows unverified |
-| Tasks | add, complete, delete, persistent state | Browser smoke PASS; Rust uncompiled |
-| Notes | create, edit, autosave, delete, serialized writes | Browser smoke PASS; Rust uncompiled |
-| Focus timer | 15/25/45/60 min presets, pause/resume, elapsed-time-aware persistence | Browser smoke PASS; Rust uncompiled |
-| Appearance | accent selection, hover and pin settings | Browser smoke PASS; Rust uncompiled |
-| **Calendar (new)** | add, edit, delete local events, reminder offset 0/5/15/30/60 min, local timezone rendering | Browser Phase 3 PASS; Rust uncompiled |
-| **Reminders (new)** | an in-app banner within 10 minutes of the due time, once per event per application session | Browser Phase 3 PASS; NOT Windows native toasts/background alarm |
-| **System (new)** | Rust `sysinfo` global CPU and used/total RAM polling (4s, only while panel open) | Rust code only; browser preview intentionally has no simulated numbers |
-| **Local backups (new)** | manually create dated snapshots in the user app-data folder, list up to 100 valid backups, restore with confirmation | Browser Phase 3 PASS; native disk I/O unverified |
+iCalendar DATE/DTEND uses timezone-neutral civil dates with an exclusive end. Timed events support UTC, IANA TZID and explicitly specified floating timezones. Local import preview shows additions and `STATUS:CANCELLED` single-occurrence exceptions before applying them atomically. A cancellation needs its matching series master in the same file and the exact original `RECURRENCE-ID`. Locally edited instances, whole-series/range cancellation, scheduling messages, ambiguous DST and unsupported recurrence shapes fail closed. Local cancellation markers block resurrection by older imports unless deliberately cleared. Unchanged supported masters and their exceptions round-trip through ICS; locally edited/deleted or legacy series may export as standalone events. The local-only manual Windows checklist is `scripts/phase16-native-acceptance.ps1`.
 
-**Unimplemented:** native media sessions, lyrics, Windows notification interception, background notifications while closed, external calendar/ICS sync, dock, file shelf, clipboard integration, Wi-Fi/Bluetooth controls, AI chat, weather, translations, snap layout, autostart, auto-update, signed installer and many advanced Poni reference features. No user data is sent to servers by the present code.
 
-## Structure
+## Project layout
 
-- `00_INSTRUCTIONS/`: development REA prompt.
-- `01_ANALYSIS/`: source/reference feature matrix, REA status, audits.
-- `02_APP/src-tauri/`: Rust/Tauri application; all app storage, time validation, backups and telemetry commands.
-- `02_APP/ui/`: local webview UI and browser-only localStorage preview adapter.
-- `03_TOOLS/`: Windows build script, PE triage tool.
-- `04_TESTS/`: Phase 2 regression, Phase 3 browser tests, structural audit.
-- `05_BRANDING/`: original WFS Notch logos, SVGs, PNGs and Windows ICO.
-- `06_EVIDENCE/`: browser screenshot evidence and test report.
-
-## Build and use on Windows
-
-1. Install current stable **Rust MSVC** (via rustup), Visual Studio C++ Build Tools with the Windows SDK, and Microsoft WebView2 Runtime. Use Windows 10/11 x64.
-2. Install Tauri CLI 2 (this may require Internet for initial dependencies):
-
-   ```powershell
-   cargo install tauri-cli --version "^2" --locked
-   ```
-
-3. Open PowerShell in the extracted `WFS_Notch_Phase3` directory and run:
-
-   ```powershell
-   cd .\02_APP
-   cargo tauri dev
-   ```
-
-4. For tests and NSIS build:
-
-   ```powershell
-   cd ..
-   .\03_TOOLS\Build-WFSNotch-Windows.ps1
-   ```
-
-If the build succeeds, NSIS output will be under `02_APP\src-tauri\target\release\bundle\nsis\`. No installer is included in this ZIP; a Windows compiler is not present in the development runtime used to prepare this source. Unsigned executables may trigger SmartScreen warnings.
-
-### Browser-only preview
-
-Run `python -m http.server 8000` in `02_APP/ui`, then open `http://localhost:8000`. The preview works independently, but uses a separate **localStorage mock adapter**, so it cannot verify native window placement, Rust storage or real CPU/RAM values. It does not show fabricated telemetry.
-
-## Data and privacy
-
-- Rust state is saved in Tauri's per-user `app_data_dir()/state.json` (identifier `id.wfs.notch`). `state.json.bak` is the previous version and is not the same as a manual snapshot.
-- Manual snapshots are named `backups/backup-...json` within the same app-data directory. The current application does not delete these backups automatically. Preserve a separate off-device copy for important data.
-- Restore requires an explicit UI confirmation and overwrites current state. Restore validates backup size/JSON and uses the existing transactional save workflow.
-- Calendar timestamps are Unix milliseconds (UTC), displayed in the user's local timezone. Reminders are **in-app only** while WFS Notch remains running and visible; no promise of OS background alarm delivery.
-- `sysinfo` is fixed at version `0.33.1` until Windows-native compilation verifies an upgrade. The browser preview shows no fake system metrics.
-- Existing Phase 1/2 `state.json` data loads with default empty `events` thanks to `serde(default)`. Database encryption, external export, and Windows native toast remain future milestones.
-
-## Tests performed in the artifact environment
-
-```powershell
-node --check .\02_APP\ui\app.js
-python .\04_TESTS\static_audit.py
-python .\04_TESTS\browser_smoke.py
-python .\04_TESTS\browser_phase3.py
+```text
+src/                       HTML entry, app state and asset links
+  features/                Calendar, media, wellness, system and display UI
+  styles/                  Base layout and feature styles
+  assets/                  Frontend SVG
+src-tauri/                 Rust 2021 / Tauri 2 native Windows application
+  src/                     Native modules and commands
+  capabilities/            IPC permissions
+  icons/                   Windows app icons
+tests/                     Browser regressions and static source checks
+assets/branding/           Original WFS Notch identity
+docs/                      Architecture, security, roadmap, coverage
+scripts/                   Build helper
+.github/workflows/ci.yml   Windows build, Rust tests and browser CI
 ```
 
-Latest recorded results: **JavaScript syntax PASS; static audit PASS; Phase 2 browser regression PASS; Phase 3 browser integration PASS.** These checks do not prove `cargo test`, `cargo clippy`, installer building, Windows native dialog behavior, Windows file permissions, real system metrics or Windows smoke test. See `06_EVIDENCE/TEST_REPORT_PHASE3.md`.
+## Develop and build on Windows
+
+Install Rust (MSVC toolchain), C++ Build Tools and Windows SDK, WebView2 Runtime, and Tauri CLI 2. No `winget` dependency.
+
+```powershell
+git clone https://github.com/wawanwfs/WFS-Notch.git
+cd WFS-Notch
+cargo install tauri-cli --version "^2" --locked
+cargo tauri dev
+.\scripts\build-windows.ps1
+```
+
+For a static browser preview, open `src/index.html`. Browser mode is not an emulator and does **not** fabricate native Windows media, monitors, notifications or device data.
+
+## Security and product maturity
+
+Native notifications are off by default, task due alerts require a second opt-in and unfinished tasks with due times, and private event/task titles are hidden until the user opts in. The notification pause option affects only WFS Notch. All user data remains on the device except features where the user explicitly requests third-party weather or opens an external link. No public tunnel or remote shell is deployed.
+
+**Development version: v0.44.0.** Windows CI builds and regression tests verify code quality and package creation, not real-device behavior or complete equivalence to any other product. This is a development release, unsigned and not independently certified on physical Windows machines.
+
+Calendar series moves are local-only. In **Calendar → Move series**, choose exact UTC/all-day days or **Source wall time** for a saved IANA timezone. A DST gap leaves the affected appointment unchanged. An ambiguous start uses the earlier instant. The review shows both time and UTC instant. Elapsed duration and cancellation history are preserved, and the original recurrence is not regenerated.
+
+Read [Phase 13 Report](docs/PHASE15_REPORT.md), [Next Phase 14 Prompt](docs/NEXT_PHASE16_PROMPT.md), [Architecture](docs/architecture.md), [Security](docs/security.md), [Feature coverage](docs/feature-coverage.md), [Phase 12 Report](docs/PHASE12_REPORT.md), [Phase 13 Prompt](docs/NEXT_PHASE13_PROMPT.md), and [Roadmap](docs/roadmap.md).
+
+## License
+
+No open-source license has been granted yet. Rights are reserved by the repository owner until a license is published.
+
+
+## Continued development (Phase 28+)
+
+The [Phase 28 autonomous master execution prompt](docs/NEXT_PHASE28_MASTER_PROMPT.md) records the verified v0.27.0 baseline, artifact links, unfinished A–J workstreams and independent PR/CI acceptance gates. The [full historical accelerated backlog](docs/NEXT_ACCELERATED_BATCH_PROMPT.md) remains available. Browser screenshots and GitHub Actions packaging are **not** evidence of native Win10/11 interactive behavior; local verification is documented in `scripts/phase16-native-acceptance.ps1`.
