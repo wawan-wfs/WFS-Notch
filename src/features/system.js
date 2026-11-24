@@ -85,6 +85,13 @@ async function refreshSystemDetails(force = false) {
   }
 }
 
+function deviceDeadline(read, milliseconds) {
+  let timer;
+  return Promise.race([
+    Promise.resolve().then(read),
+    new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('DEVICE_TIMEOUT')),milliseconds);})
+  ]).finally(()=>clearTimeout(timer));
+}
 let deviceRequest = 0;
 async function readDeviceInfo(readNative = nativeInvoke ? () => invoke('get_device_diagnostics') : null) {
   const request = ++deviceRequest;
@@ -98,11 +105,14 @@ async function readDeviceInfo(readNative = nativeInvoke ? () => invoke('get_devi
   status.textContent = 'Reading local device information…';
   read.disabled = true; clear.disabled = false;
   try {
-    const result = await readNative();
+    const result = await deviceDeadline(readNative,10000);
+    if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error('Invalid device snapshot');
     if (request !== deviceRequest) return;
     const fields = [['Operating system',result.os_name],['OS version',result.os_version],
       ['Kernel version',result.kernel_version],['App architecture',result.architecture],
-      ['Available logical CPUs',result.logical_cpus]];
+      ['Available logical CPUs',Number.isSafeInteger(result.logical_cpus) && result.logical_cpus > 0 ? result.logical_cpus : null],
+      ['Total memory',Number.isFinite(result.memory_total_bytes) && result.memory_total_bytes > 0 ? systemBytes(result.memory_total_bytes) : null],
+      ['Uptime',Number.isSafeInteger(result.uptime_seconds) && result.uptime_seconds >= 0 ? Math.floor(result.uptime_seconds/3600) + ' h ' + Math.floor(result.uptime_seconds%3600/60) + ' min' : null]];
     for (const [label,value] of fields) {
       const line = node('div','module-item');
       const info = node('div','module-info');
@@ -111,7 +121,7 @@ async function readDeviceInfo(readNative = nativeInvoke ? () => invoke('get_devi
     }
     status.textContent = 'Local snapshot complete. Unavailable fields are not estimated.';
   } catch (error) {
-    if (request === deviceRequest) status.textContent = 'Device snapshot failed or unavailable.';
+    if (request === deviceRequest) status.textContent = error?.message === 'DEVICE_TIMEOUT' ? 'Device request timed out. Retry or clear.' : 'Device snapshot failed or unavailable.';
   } finally {
     if (request === deviceRequest) read.disabled = false;
   }

@@ -178,12 +178,12 @@
             <div class="system-card"><span class="mini-label">CPU USAGE</span><b id="system-cpu">—</b><div class="meter"><span id="cpu-meter"></span></div></div>
             <div class="system-card"><span class="mini-label">MEMORY USAGE</span><b id="system-memory">—</b><div class="meter"><span id="memory-meter"></span></div></div>
           </div>
-          <p id="system-detail" class="system-detail">No reading yet.</p>
+          <p id="system-detail" class="system-detail" role="status">No reading yet.</p>
           <div class="system-detail-columns">
             <section><h3>Storage volumes</h3><div id="system-disks" aria-live="polite">Read-only on Windows · no preview numbers</div></section>
             <section><h3>Network interfaces</h3><div id="system-networks" aria-live="polite">Read-only on Windows · no preview numbers</div></section>
           </div>
-          <section class="phase44-card" aria-labelledby="device-heading"><div class="section-heading"><div><h3 id="device-heading">Device diagnostics</h3><p>On-demand read-only OS version, architecture and available logical CPU count. No identifiers or network requests.</p></div></div><div class="tool-actions"><button id="device-read" class="secondary" type="button">Read device info</button><button id="device-clear" class="secondary" type="button" disabled>Clear device info</button></div><p id="device-status" class="event-hint" role="status">Not requested.</p><div id="device-results" class="module-list"></div></section>
+          <section class="phase44-card" aria-labelledby="device-heading"><div class="section-heading"><div><h3 id="device-heading">Device diagnostics</h3><p>On-demand read-only OS, CPU, memory and uptime summary. No identifiers or network requests.</p></div></div><div class="tool-actions"><button id="device-read" class="secondary" type="button">Read device info</button><button id="device-clear" class="secondary" type="button" disabled>Clear device info</button></div><p id="device-status" class="event-hint" role="status">Not requested.</p><div id="device-results" class="module-list"></div></section>
           <p class="event-hint">Disk and network totals are local OS counters, not speed tests. No Wi-Fi scanning, admin privileges or uploads.</p>
           <p class="event-hint">Refreshes every 4 seconds while this panel is open. Does not track running apps, upload telemetry, or run a background service.</p>
         </section>
@@ -280,10 +280,13 @@
           <div class="module-list" id="quicklink-list"></div>
           <p class="event-hint">Native buttons require Windows; pinned links open in your default browser. URLs must be http(s), without embedded passwords.</p>
           <section class="phase44-card" aria-labelledby="shelf-heading">
-            <div class="section-heading"><div><h3 id="shelf-heading">File Shelf</h3><p>Review selected file metadata locally. No contents, paths or uploads; entries disappear when the app reloads.</p></div><span class="section-pill" id="shelf-count">0 / 32</span></div>
+            <div class="section-heading"><div><h3 id="shelf-heading">File Shelf</h3><p>Review selected file metadata locally. No contents, paths or uploads. Session-only by default; optionally remember metadata on this device.</p></div><span class="section-pill" id="shelf-count">0 / 32</span></div>
             <label for="shelf-input" class="event-hint">Choose files to add (max 32)</label>
             <input id="shelf-input" class="shelf-input" type="file" multiple>
-            <div class="tool-actions"><button id="shelf-clear" class="secondary" type="button" disabled>Clear Shelf</button></div>
+            <div class="shelf-toolbar"><label>Search Shelf<input id="shelf-search" type="search" maxlength="120" placeholder="Filter file names"></label><label>Sort Shelf<select id="shelf-sort"><option value="added">Added order</option><option value="name">Name A–Z</option><option value="size">Largest first</option><option value="modified">Modified newest</option></select></label></div>
+            <div class="tool-actions"><button id="shelf-clear" class="secondary" type="button" disabled>Clear Shelf</button><button id="shelf-forget" class="secondary" type="button" disabled>Forget saved Shelf</button></div>
+            <label class="shelf-consent"><input id="shelf-remember" type="checkbox"> Remember names, sizes and modified dates across restarts (local only)</label>
+            <p class="event-hint" id="shelf-filter-count">0 of 0 shown</p>
             <p id="shelf-status" class="event-hint" role="status" aria-live="polite">No files selected.</p>
             <div id="shelf-list" class="module-list"></div>
           </section>
@@ -383,7 +386,7 @@
           <div class="settings-row"><div><b>Data storage</b><small>All tasks and notes are saved locally by the Rust backend</small></div><span class="section-pill">PRIVATE</span></div>
           <div class="settings-row backup-heading"><div><b>Data backups</b><small>Store a snapshot in your private app data folder, or restore an earlier snapshot.</small></div><button class="secondary" id="backup-create" type="button">Create backup</button></div>
           <div id="backup-list" class="backup-list"><span class="empty">No backups created yet.</span></div>
-          <div class="settings-row"><div><b>Development status</b><small>Verified browser prototype; native Windows integration still requires testing</small></div><span class="section-pill">0.43.0 · DEVELOPMENT</span></div>
+          <div class="settings-row"><div><b>Development status</b><small>Development candidate; full build and native acceptance required</small></div><span class="section-pill">0.45.0 · CANDIDATE</span></div>
           <div class="settings-row"><div><b>Exit WFS Notch</b><small>Close the app after saving pending notes</small></div><button class="secondary" id="app-exit" type="button">Exit app</button></div>
         </section>
       </main>

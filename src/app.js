@@ -1104,24 +1104,38 @@ async function refreshBackups() {
   catch (error) { showError(error); }
 }
 
+function resetTelemetry(message) {
+  $('#system-cpu').textContent = '—';
+  $('#system-memory').textContent = '—';
+  $('#cpu-meter').style.width = '0%';
+  $('#memory-meter').style.width = '0%';
+  $('#system-detail').textContent = message;
+}
 async function refreshTelemetry() {
   if (telemetryPending || activeTab !== 'system') return;
   telemetryPending = true;
   try {
     const sample = await invoke('get_system_snapshot');
-    if (!sample || !sample.memory_total_bytes) {
-      $('#system-detail').textContent = 'System data is available in the native Rust/Windows app only.';
+    if (!sample || (!nativeInvoke && !sample.memory_total_bytes)) {
+      resetTelemetry('System data is available in the native Rust/Windows app only.');
       return;
     }
-    const percentage = Math.min(100, 100 * sample.memory_used_bytes / sample.memory_total_bytes);
-    $('#system-cpu').textContent = `${Math.round(sample.cpu_percent)}%`;
-    $('#system-memory').textContent = `${Math.round(percentage)}%`;
-    $('#cpu-meter').style.width = `${Math.max(0, Math.min(100, sample.cpu_percent))}%`;
-    $('#memory-meter').style.width = `${percentage}%`;
+    const {memory_total_bytes:total,memory_used_bytes:used,cpu_percent:cpu,sampled_at_ms:at} = sample;
+    if (![total,used,cpu,at].every(Number.isFinite) || total <= 0 || used < 0 ||
+        used > total || cpu < 0 || cpu > 100 || at < 0 || at > 8640000000000000) {
+      resetTelemetry('System snapshot unavailable or invalid. Refresh to retry.');
+      return;
+    }
+    const percentage = 100 * used / total;
+    $('#system-cpu').textContent = Math.round(cpu) + '%';
+    $('#system-memory').textContent = Math.round(percentage) + '%';
+    $('#cpu-meter').style.width = cpu + '%';
+    $('#memory-meter').style.width = percentage + '%';
     const gb = bytes => (bytes / (1024 ** 3)).toFixed(1);
-    $('#system-detail').textContent = `RAM ${gb(sample.memory_used_bytes)} / ${gb(sample.memory_total_bytes)} GiB · sampled ${new Date(sample.sampled_at_ms).toLocaleTimeString()}`;
-  } catch (error) { showError(error); }
-  finally { telemetryPending = false; telemetryLastAt = Date.now(); }
+    $('#system-detail').textContent = 'RAM ' + gb(used) + ' / ' + gb(total) + ' GiB · sampled ' + new Date(at).toLocaleTimeString();
+  } catch {
+    resetTelemetry('System snapshot failed. Refresh to retry.');
+  } finally { telemetryPending = false; telemetryLastAt = Date.now(); }
 }
 function checkReminders(now = Date.now()) {
   // In-app reminder remains available; native OS toast requires explicit opt-in.

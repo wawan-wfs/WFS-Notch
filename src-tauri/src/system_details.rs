@@ -86,6 +86,8 @@ pub struct DeviceDiagnostics {
     kernel_version: Option<String>,
     architecture: &'static str,
     logical_cpus: Option<usize>,
+    memory_total_bytes: Option<u64>,
+    uptime_seconds: Option<u64>,
 }
 
 /// Explicitly requested, local-only snapshot. No host name, serial, user or IP.
@@ -94,6 +96,9 @@ pub fn get_device_diagnostics() -> Result<DeviceDiagnostics, String> {
     if !cfg!(windows) {
         return Err("Device diagnostics are available on Windows only".into());
     }
+    let mut system = sysinfo::System::new();
+    system.refresh_memory();
+    let memory = system.total_memory();
     Ok(DeviceDiagnostics {
         os_name: sysinfo::System::name(),
         os_version: sysinfo::System::os_version(),
@@ -102,5 +107,7 @@ pub fn get_device_diagnostics() -> Result<DeviceDiagnostics, String> {
         logical_cpus: std::thread::available_parallelism()
             .ok()
             .map(std::num::NonZeroUsize::get),
+        memory_total_bytes: (memory > 0).then_some(memory),
+        uptime_seconds: Some(sysinfo::System::uptime()),
     })
 }

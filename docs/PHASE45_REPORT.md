@@ -1,0 +1,7 @@
+# Phase 45 candidate report
+
+Baseline 60fb7912152d5144b71caf8f0bbaaa5a2c1e9f9c; keep v0.45.0 until acceptance. Prior migrated run 44755910010 on 5964eb5 had browser, Rust and Windows build success, but identity failed because actor wawan-wfs differed from legacy wawanwfs. This is not evidence for current candidate.
+
+Implemented opt-in Shelf metadata persistence in local WebView storage, bounded strict schema, path/control rejection, duplicate policy, sort/filter, forget, and write-failure rollback. No file contents, paths, read/open/move operations, upload or native permission expansion. File input uses platform picker; actual Windows picker and restart remain untested. Added read-only memory/uptime, 10-second device UI timeout (does not cancel native call), invalid telemetry handling, region accessibility and narrow/forced-colors styling. Audio endpoint enumeration is not implemented. CI now workflow_dispatch only. Attribution test uses new account noreply metadata; future push guard requires matching configured name/email; no historical rewrite.
+
+Executed 23 assertions against exact Shelf model definitions in JS runtime; Node test added to CI. Browser fixtures expanded, but full browser regression not run. No Rust toolchain in container, GitHub direct DNS unavailable; connector does not expose manual workflow dispatch. No new installer, no merge, no native acceptance or Poni reference comparison. Fixed 38-category score remains 28.9% last measured. No 100% claim.

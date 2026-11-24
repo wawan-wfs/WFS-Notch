@@ -11,6 +11,8 @@ function wfsSyncNavigation() {
     button.setAttribute('aria-pressed', String(current));
     button.tabIndex = current ? 0 : -1;
     button.scrollMarginInline = '18px';
+    const panel = document.getElementById('panel-' + button.dataset.tab);
+    if (panel) panel.setAttribute('aria-hidden',String(!current));
   }
 }
 function wfsInitNavigation() {
@@ -26,6 +28,7 @@ function wfsInitNavigation() {
       button.id = button.id || 'nav-' + name;
       const panel = document.getElementById('panel-' + name);
       if (panel) {
+        panel.setAttribute('role','region');
         button.setAttribute('aria-controls', panel.id);
         panel.setAttribute('aria-labelledby', button.id);
       }

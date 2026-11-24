@@ -37,7 +37,7 @@ with sync_playwright() as pw:
     )
     # Actual Windows DPI/monitor tests are tracked separately: these are CSS/WebView proxies.
     for width, height, dpi in [(760, 470, 1), (760, 470, 1.25),
-                               (760, 470, 1.5), (560, 420, 1)]:
+                               (760, 470, 1.5), (560, 420, 1), (560, 420, 1.5)]:
         context = browser.new_context(
             viewport={"width": width, "height": height},
             device_scale_factor=dpi, bypass_csp=True,
@@ -108,4 +108,4 @@ with sync_playwright() as pw:
         assert not errors, "JavaScript errors: " + "; ".join(errors)
         context.close()
     browser.close()
-print("PASS: 16 module screenshots at 100%, 125%, 150% and narrow viewport (64 total)")
+print("PASS: 16 module screenshots at 100%, 125%, 150% and narrow viewport (80 total)")

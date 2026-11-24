@@ -10,9 +10,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-OWNER = 'wawanwfs'
-EMAIL = '90094394+wawanwfs@users.noreply.github.com'
-NAME = 'WAHYU FAJAR SETIAWAN'
+OWNER = 'wawan-wfs'
+EMAIL = '358793766+wawan-wfs@users.noreply.github.com'
+NAME = 'wawan-wfs'
 
 
 def git(*arguments: str) -> str:

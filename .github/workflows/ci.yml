@@ -2,9 +2,6 @@ name: WFS Notch — Windows CI & Browser Audit
 
 on:
   workflow_dispatch:
-  pull_request:
-    types: [opened, reopened]
-    branches: [main]
 
 # No repository writes, privileged events, remote shell, or tunnel in CI.
 permissions:
@@ -53,6 +50,8 @@ jobs:
         run: node --check src/app.js
       - name: Modules JavaScript syntax
         run: node --check src/features/modules.js
+      - name: Shelf schema, storage and filtering regressions
+        run: node tests/shelf_model.test.cjs
       - name: Wellness JavaScript syntax
         run: node --check src/features/wellness.js
       - name: Owner and GitHub squash attribution regression

@@ -60,12 +60,25 @@ with sync_playwright() as pw:
     assert page.evaluate("shelfEntries.every(x => Object.keys(x).sort().join(',') === 'modified,name,size')")
     assert page.evaluate("shelfAdd([], [{name:'a',size:1,lastModified:0},{name:'a',size:1,lastModified:0}]).entries.length") == 1
     assert page.evaluate("shelfAdd([], Array.from({length:40},(_,i)=>({name:'f'+i,size:1,lastModified:0}))).entries.length") == 32
+    page.locator("#shelf-search").fill("b.txt")
+    assert page.locator("#shelf-filter-count").inner_text() == "1 of 2 shown"
+    page.locator("#shelf-search").fill("")
+    page.locator("#shelf-sort").select_option("size")
+    assert page.locator("#shelf-list .module-item").first.get_by_text("b.txt", exact=True).is_visible()
+    assert page.evaluate("localStorage.getItem(SHELF_KEY)") is None
+    page.locator("#shelf-remember").check()
+    assert page.evaluate("shelfDecode(localStorage.getItem(SHELF_KEY)).entries.length") == 2
+    page.locator("#shelf-sort").select_option("added")
     page.get_by_role("button", name="Remove from Shelf: a.txt").click()
     assert page.locator("#shelf-count").inner_text() == "1 / 32"
     assert page.get_by_role("button", name="Remove from Shelf: b.txt").evaluate("(el) => el === document.activeElement")
     page.get_by_role("button", name="Clear Shelf").click()
     assert page.locator("#shelf-count").inner_text() == "0 / 32"
     assert shelf.evaluate("(el) => el === document.activeElement")
+    assert page.evaluate("shelfDecode(localStorage.getItem(SHELF_KEY)).entries.length") == 0
+    page.get_by_role("button", name="Forget saved Shelf").click()
+    assert page.evaluate("localStorage.getItem(SHELF_KEY)") is None
+    assert not page.locator("#shelf-remember").is_checked()
     page.get_by_role("button", name="System", exact=True).click()
     page.get_by_role("button", name="Read device info").click()
     assert "requires the installed Windows app" in page.locator("#device-status").inner_text()
@@ -75,7 +88,7 @@ with sync_playwright() as pw:
       await readDeviceInfo(() => Promise.resolve({os_name:'Fixture OS',architecture:'x86_64',logical_cpus:4}));
     }""")
     assert page.locator("#device-results").get_by_text("Fixture OS", exact=True).is_visible()
-    assert page.locator("#device-results").get_by_text("Unavailable", exact=True).count() == 2
+    assert page.locator("#device-results").get_by_text("Unavailable", exact=True).count() == 4
     page.evaluate("() => readDeviceInfo(() => Promise.reject(new Error('fixture failure')))")
     assert "failed or unavailable" in page.locator("#device-status").inner_text()
     page.evaluate("""() => {
@@ -84,6 +97,7 @@ with sync_playwright() as pw:
         window.deviceFixture.resolve = resolve;
       }));
     }""")
+    page.wait_for_function("typeof window.deviceFixture.resolve === 'function'")
     assert page.locator("#device-read").is_disabled()
     assert "Reading local" in page.locator("#device-status").inner_text()
     page.get_by_role("button", name="Clear device info").click()

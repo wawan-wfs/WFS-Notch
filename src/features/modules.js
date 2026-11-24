@@ -233,44 +233,96 @@ function handlePaletteKey(event) {
   }
 }
 
-function shelfRecord(file){
-  if (!file || typeof file.name !== 'string' || !file.name.length || file.name.length > 512 ||
+const SHELF_KEY = 'wfs-notch-shelf-metadata-v1';
+const SHELF_LIMIT = 32;
+function shelfRecord(file) {
+  if (!file || typeof file.name !== 'string' || !file.name.trim() || file.name.length > 512 ||
+      /[\/\\\x00-\x1f\x7f\u202a-\u202e\u2066-\u2069]/u.test(file.name) ||
       !Number.isSafeInteger(file.size) || file.size < 0 ||
-      !Number.isSafeInteger(file.lastModified) || file.lastModified < 0) return null;
-  // Do not retain File objects, paths, MIME guesses, contents or object URLs.
+      !Number.isSafeInteger(file.lastModified) || file.lastModified < 0 ||
+      file.lastModified > 8640000000000000) return null;
   return {name:file.name,size:file.size,modified:file.lastModified};
 }
 function shelfAdd(existing, selected) {
-  const entries = existing.slice(0, 32);
+  const entries = existing.slice(0,SHELF_LIMIT);
   const keys = new Set(entries.map(item => JSON.stringify([item.name,item.size,item.modified])));
   let added = 0, skipped = 0;
   for (const file of selected) {
     const item = shelfRecord(file);
-    if (!item || entries.length >= 32) { skipped++; continue; }
+    if (!item || entries.length >= SHELF_LIMIT) { skipped++; continue; }
     const key = JSON.stringify([item.name,item.size,item.modified]);
     if (keys.has(key)) { skipped++; continue; }
     keys.add(key); entries.push(item); added++;
   }
   return {entries,added,skipped};
 }
+function shelfDecode(raw) {
+  if (raw === null) return {enabled:false,entries:[]};
+  if (typeof raw !== 'string' || raw.length > 120000) throw new Error('Invalid Shelf storage size');
+  const value = JSON.parse(raw);
+  if (!value || value.version !== 1 || value.enabled !== true || !Array.isArray(value.entries) ||
+      value.entries.length > SHELF_LIMIT) throw new Error('Invalid Shelf storage schema');
+  const entries = value.entries.map(item => {
+    if (!item || typeof item !== 'object' || Object.keys(item).sort().join(',') !== 'modified,name,size')
+      throw new Error('Unexpected Shelf metadata fields');
+    const record = shelfRecord({name:item.name,size:item.size,lastModified:item.modified});
+    if (!record) throw new Error('Invalid Shelf metadata');
+    return record;
+  });
+  const dedup = new Set(entries.map(item => JSON.stringify([item.name,item.size,item.modified])));
+  if (dedup.size !== entries.length) throw new Error('Duplicate Shelf metadata');
+  return {enabled:true,entries};
+}
+function shelfPersist(storage, enabled, entries) {
+  if (!enabled) { storage.removeItem(SHELF_KEY); return; }
+  const raw = JSON.stringify({version:1,enabled:true,entries});
+  shelfDecode(raw);
+  storage.setItem(SHELF_KEY,raw);
+}
+function shelfView(entries, search, sort) {
+  const term = search.trim().toLowerCase();
+  const visible = entries.map((item,index)=>({item,index})).filter(row=>row.item.name.toLowerCase().includes(term));
+  if (sort === 'name') visible.sort((a,b)=>a.item.name.localeCompare(b.item.name) || a.index-b.index);
+  if (sort === 'size') visible.sort((a,b)=>b.item.size-a.item.size || a.index-b.index);
+  if (sort === 'modified') visible.sort((a,b)=>b.item.modified-a.item.modified || a.index-b.index);
+  return visible;
+}
 let shelfEntries = [];
+let shelfRemember = false;
+let shelfStorageBlocked = false;
+function shelfStatus(message) { $('#shelf-status').textContent = message; }
+function shelfCommit(next) {
+  try {
+    if (shelfRemember) shelfPersist(localStorage,true,next);
+    shelfEntries = next;
+    return true;
+  } catch {
+    shelfStatus('Storage write failed. Shelf was not changed. Disable remembering to continue without persistence.');
+    return false;
+  }
+}
 function renderShelf(focusIndex = null) {
   const list = $('#shelf-list');
   list.replaceChildren();
-  $('#shelf-count').textContent = shelfEntries.length + ' / 32';
+  const visible = shelfView(shelfEntries,$('#shelf-search').value,$('#shelf-sort').value);
+  $('#shelf-count').textContent = shelfEntries.length + ' / ' + SHELF_LIMIT;
   $('#shelf-clear').disabled = !shelfEntries.length;
-  if (!shelfEntries.length) list.append(node('div','empty','Shelf is empty.'));
-  shelfEntries.forEach((item,index) => {
+  $('#shelf-remember').checked = shelfRemember;
+  $('#shelf-forget').disabled = !shelfRemember && !shelfStorageBlocked;
+  $('#shelf-filter-count').textContent = visible.length + ' of ' + shelfEntries.length + ' shown';
+  if (!visible.length) list.append(node('div','empty',shelfEntries.length ? 'No matching files.' : 'Shelf is empty.'));
+  visible.forEach(({item,index},position) => {
     const line = node('div','module-item');
     const info = node('div','module-info');
-    info.append(node('b','',item.name),node('small','',item.size.toLocaleString() + ' bytes'));
+    const date = item.modified ? new Date(item.modified).toLocaleDateString() : 'Date unavailable';
+    info.append(node('b','',item.name),node('small','',item.size.toLocaleString() + ' bytes · ' + date));
     const remove = node('button','remove-task','×');
     remove.type = 'button';
     remove.setAttribute('aria-label','Remove from Shelf: ' + item.name);
     remove.addEventListener('click', () => {
-      shelfEntries.splice(index,1);
-      $('#shelf-status').textContent = 'Removed one entry.';
-      renderShelf(index);
+      if (!shelfCommit(shelfEntries.filter((_,i)=>i!==index))) return;
+      shelfStatus('Removed one entry.');
+      renderShelf(position);
     });
     line.append(info,remove); list.append(line);
   });
@@ -279,20 +331,44 @@ function renderShelf(focusIndex = null) {
     (buttons[Math.min(focusIndex,buttons.length-1)] || $('#shelf-input')).focus();
   }
 }
+function setShelfRemember(enabled) {
+  try {
+    shelfPersist(localStorage,enabled,shelfEntries);
+    shelfRemember = enabled; shelfStorageBlocked = false;
+    shelfStatus(enabled ? 'Remembering names, sizes and modified dates on this device.' :
+      'Saved Shelf metadata removed. Current entries are session-only.');
+  } catch {
+    shelfStorageBlocked = true;
+    shelfStatus('Could not change saved Shelf preference. Existing saved data may remain; retry Forget saved Shelf.');
+  }
+  renderShelf();
+}
 function initShelf() {
   const input = $('#shelf-input');
+  try {
+    const saved = shelfDecode(localStorage.getItem(SHELF_KEY));
+    shelfEntries = saved.entries; shelfRemember = saved.enabled;
+    if (saved.enabled) shelfStatus('Restored local metadata only. Reselect files if needed.');
+  } catch {
+    shelfStorageBlocked = true;
+    shelfStatus('Saved Shelf could not be read. Nothing restored. Use Forget saved Shelf to remove invalid data.');
+  }
   input.addEventListener('change', () => {
     const result = shelfAdd(shelfEntries,input.files || []);
-    shelfEntries = result.entries;
     input.value = '';
-    $('#shelf-status').textContent = result.added + ' added; ' + result.skipped + ' skipped (duplicate, invalid or capacity).';
+    if (!shelfCommit(result.entries)) return;
+    shelfStatus(result.added + ' added; ' + result.skipped + ' skipped (duplicate, invalid or capacity).');
     renderShelf();
   });
   $('#shelf-clear').addEventListener('click', () => {
-    shelfEntries = [];
-    $('#shelf-status').textContent = 'Shelf cleared. Original files unchanged.';
+    if (!shelfCommit([])) return;
+    shelfStatus('Shelf cleared. Original files unchanged.');
     renderShelf(); input.focus();
   });
+  $('#shelf-search').addEventListener('input',()=>renderShelf());
+  $('#shelf-sort').addEventListener('change',()=>renderShelf());
+  $('#shelf-remember').addEventListener('change',event=>setShelfRemember(event.target.checked));
+  $('#shelf-forget').addEventListener('click',()=>{setShelfRemember(false); $('#shelf-remember').focus();});
   renderShelf();
 }
 

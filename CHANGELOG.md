@@ -1,5 +1,13 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Phase 45 — v0.45.0 candidate hardening (not released)
+
+- Opt-in local metadata persistence, strict versioned schema, safe basename checks, bounded storage, search/sort, forget and failure-aware writes.
+- Read-only device memory and uptime, bounded IPC wait, stale response isolation; invalid telemetry clears stale numbers.
+- Named regions and theme-consistent controls; forced-colors styling; 80-view screenshot matrix planned.
+- Manual-only GitHub Actions; updated migrated-account attribution rule and stale Settings version.
+- Full CI and Windows acceptance remain outstanding.
+
 ## 0.45.0 — Phase 44 candidate (not released)
 
 - Local session-only metadata File Shelf inside Dock: 32 entries, deduplication, remove/clear, keyboard focus.
