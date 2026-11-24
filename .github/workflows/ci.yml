@@ -52,6 +52,8 @@ jobs:
         run: node --check src/features/modules.js
       - name: Shelf schema, storage and filtering regressions
         run: node tests/shelf_model.test.cjs
+      - name: Phase 45 state, storage failure and IPC fixtures
+        run: node tests/phase45_state.test.cjs
       - name: Wellness JavaScript syntax
         run: node --check src/features/wellness.js
       - name: Owner and GitHub squash attribution regression

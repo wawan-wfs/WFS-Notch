@@ -237,7 +237,7 @@ const SHELF_KEY = 'wfs-notch-shelf-metadata-v1';
 const SHELF_LIMIT = 32;
 function shelfRecord(file) {
   if (!file || typeof file.name !== 'string' || !file.name.trim() || file.name.length > 512 ||
-      /[\/\\\x00-\x1f\x7f\u202a-\u202e\u2066-\u2069]/u.test(file.name) ||
+      /[\/\\:\x00-\x1f\x7f\u202a-\u202e\u2066-\u2069]/u.test(file.name) ||
       !Number.isSafeInteger(file.size) || file.size < 0 ||
       !Number.isSafeInteger(file.lastModified) || file.lastModified < 0 ||
       file.lastModified > 8640000000000000) return null;
@@ -260,7 +260,8 @@ function shelfDecode(raw) {
   if (raw === null) return {enabled:false,entries:[]};
   if (typeof raw !== 'string' || raw.length > 120000) throw new Error('Invalid Shelf storage size');
   const value = JSON.parse(raw);
-  if (!value || value.version !== 1 || value.enabled !== true || !Array.isArray(value.entries) ||
+  if (!value || typeof value !== 'object' || Object.keys(value).sort().join(',') !== 'enabled,entries,version' ||
+      value.version !== 1 || value.enabled !== true || !Array.isArray(value.entries) ||
       value.entries.length > SHELF_LIMIT) throw new Error('Invalid Shelf storage schema');
   const entries = value.entries.map(item => {
     if (!item || typeof item !== 'object' || Object.keys(item).sort().join(',') !== 'modified,name,size')

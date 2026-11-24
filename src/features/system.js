@@ -108,8 +108,9 @@ async function readDeviceInfo(readNative = nativeInvoke ? () => invoke('get_devi
     const result = await deviceDeadline(readNative,10000);
     if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error('Invalid device snapshot');
     if (request !== deviceRequest) return;
-    const fields = [['Operating system',result.os_name],['OS version',result.os_version],
-      ['Kernel version',result.kernel_version],['App architecture',result.architecture],
+    const safeText = value => typeof value === 'string' && value.trim() && value.length <= 256 ? value : null;
+    const fields = [['Operating system',safeText(result.os_name)],['OS version',safeText(result.os_version)],
+      ['Kernel version',safeText(result.kernel_version)],['App architecture',safeText(result.architecture)],
       ['Available logical CPUs',Number.isSafeInteger(result.logical_cpus) && result.logical_cpus > 0 ? result.logical_cpus : null],
       ['Total memory',Number.isFinite(result.memory_total_bytes) && result.memory_total_bytes > 0 ? systemBytes(result.memory_total_bytes) : null],
       ['Uptime',Number.isSafeInteger(result.uptime_seconds) && result.uptime_seconds >= 0 ? Math.floor(result.uptime_seconds/3600) + ' h ' + Math.floor(result.uptime_seconds%3600/60) + ' min' : null]];

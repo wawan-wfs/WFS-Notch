@@ -1117,7 +1117,7 @@ async function refreshTelemetry() {
   try {
     const sample = await invoke('get_system_snapshot');
     if (!sample || (!nativeInvoke && !sample.memory_total_bytes)) {
-      resetTelemetry('System data is available in the native Rust/Windows app only.');
+      resetTelemetry(nativeInvoke ? 'System snapshot unavailable. Refresh to retry.' : 'System data is available in the native Rust/Windows app only.');
       return;
     }
     const {memory_total_bytes:total,memory_used_bytes:used,cpu_percent:cpu,sampled_at_ms:at} = sample;
