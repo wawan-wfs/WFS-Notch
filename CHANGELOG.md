@@ -5,6 +5,7 @@
 - Persistent, bounded title-free WFS reminder activity for calendar/task enqueue results, independent of reservation ledger and backup restore.
 - Explicit Windows audio input/output endpoint inventory via WinRT; no capture, playback, IDs or setting changes.
 - Dashboard planning widgets, filtered task and event lists, shared responsive workspace design, media capability and failure guards.
+- Shelf bulk removal and copy shown names; dashboard unavailable state, explicit media re-selection after disconnect, and single-flight audio inventory.
 - Model regressions and Rust journal tests added; build, full browser and physical acceptance pending.
 
 ## Phase 45 — v0.45.0 candidate hardening (not released)

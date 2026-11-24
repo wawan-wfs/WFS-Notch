@@ -56,7 +56,7 @@ pub(super) enum ActivityOutcome {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub(super) struct NotificationActivity {
+pub struct NotificationActivity {
     at_ms: u64,
     kind: ActivityKind,
     outcome: ActivityOutcome,
@@ -402,9 +402,14 @@ where
     }
     let key = delivery_key(&event);
     let expires_at = reservation_expires_at(&event);
-    reserve_and_send(&mut guard, key, expires_at, now, ActivityKind::Calendar, || {
-        sender(&event, &settings)
-    })
+    reserve_and_send(
+        &mut guard,
+        key,
+        expires_at,
+        now,
+        ActivityKind::Calendar,
+        || sender(&event, &settings),
+    )
 }
 
 /// Shared durable reservation and retry journal for calendar and task alerts.
@@ -505,9 +510,14 @@ where
     let key = task_delivery_key(&todo).ok_or("Task due date was cleared")?;
     let expires_at = u128::from(task_alert_at(&todo).ok_or("Task due date was cleared")?)
         .saturating_add(LEDGER_RETENTION_MS);
-    reserve_and_send(&mut guard, key, expires_at, now, ActivityKind::Task, || {
-        sender(&todo, &settings)
-    })
+    reserve_and_send(
+        &mut guard,
+        key,
+        expires_at,
+        now,
+        ActivityKind::Task,
+        || sender(&todo, &settings),
+    )
 }
 
 fn deliver_task_by_id(app: &AppHandle, store: &Mutex<Store>, id: &str) -> Result<bool, String> {
@@ -711,13 +721,22 @@ mod tests {
         let now = u128::from(ACTIVITY_RETENTION_MS) + 100;
         let mut data = AppData::default();
         for _ in 0..250 {
-            record_activity(&mut data, now, ActivityKind::Task, ActivityOutcome::EnqueueAccepted, 1);
+            record_activity(
+                &mut data,
+                now,
+                ActivityKind::Task,
+                ActivityOutcome::EnqueueAccepted,
+                1,
+            );
         }
         assert_eq!(data.notification_activity.len(), ACTIVITY_LIMIT);
         let json = serde_json::to_value(&data.notification_activity[0]).unwrap();
         assert_eq!(json.as_object().unwrap().len(), 4);
         assert_eq!(json["outcome"], "enqueue_accepted");
-        normalize_activity(&mut data.notification_activity, now + u128::from(ACTIVITY_RETENTION_MS) + 1);
+        normalize_activity(
+            &mut data.notification_activity,
+            now + u128::from(ACTIVITY_RETENTION_MS) + 1,
+        );
         assert!(data.notification_activity.is_empty());
     }
 
@@ -726,7 +745,13 @@ mod tests {
         let mut current = AppData::default();
         current.reminder_deliveries.insert("opaque".into(), 1000);
         let mut backup = current.clone();
-        record_activity(&mut backup, 100, ActivityKind::Calendar, ActivityOutcome::RetryScheduled, 1);
+        record_activity(
+            &mut backup,
+            100,
+            ActivityKind::Calendar,
+            ActivityOutcome::RetryScheduled,
+            1,
+        );
         crate::preserve_reminder_history(&mut backup, &current);
         assert!(backup.notification_activity.is_empty());
         assert_eq!(backup.reminder_deliveries, current.reminder_deliveries);

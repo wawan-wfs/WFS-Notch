@@ -21,16 +21,19 @@ function workspaceTaskMatch(task,filter,term,now) {
 function workspaceEventMatch(event,filter,term,now) {
   if (!String(event.title||'').toLowerCase().includes(term.trim().toLowerCase())) return false;
   const bounds=workspaceBounds(now);
-  let today=false,past=false;
+  let today=false,past=false,valid=false;
   if (event.all_day) {
-    today=event.all_day.start_date<=bounds.day && event.all_day.end_date_exclusive>bounds.day;
-    past=event.all_day.end_date_exclusive<=bounds.day;
+    const {start_date:start,end_date_exclusive:end}=event.all_day;
+    valid=typeof start==='string'&&typeof end==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(start)&&/^\d{4}-\d{2}-\d{2}$/.test(end)&&end>start;
+    today=valid&&start<=bounds.day&&end>bounds.day;
+    past=valid&&end<=bounds.day;
   } else {
     const start=event.starts_at_ms, end=event.ends_at_ms??start+1;
-    today=Number.isFinite(start)&&Number.isFinite(end)&&start<bounds.end&&end>bounds.start;
-    past=Number.isFinite(end)&&end<=now;
+    valid=Number.isFinite(start)&&Number.isFinite(end)&&end>start;
+    today=valid&&start<bounds.end&&end>bounds.start;
+    past=valid&&end<=now;
   }
-  return filter==='today'?today:filter==='past'?past:filter==='upcoming'?!past:true;
+  return filter==='today'?today:filter==='past'?past:filter==='upcoming'?valid&&!past:true;
 }
 const activityOutcomes={enqueue_accepted:'Enqueue accepted',retry_scheduled:'Retry scheduled',retry_exhausted:'Retry exhausted'};
 function normalizeActivity(raw) {
@@ -45,8 +48,9 @@ function normalizeAudio(raw) {
   return ['output','input'].map(kind=>{
     const group=raw[kind];
     if (!group||!['ok','partial','denied','unavailable'].includes(group.status)||!Array.isArray(group.endpoints)) throw Error('Invalid audio group');
-    return {kind,status:group.status,truncated:group.truncated===true||group.endpoints.length>32,
-      endpoints:group.endpoints.slice(0,32).filter(row=>row&&typeof row.name==='string'&&row.name.length<=200)
+    const visible=['ok','partial'].includes(group.status)?group.endpoints:[];
+    return {kind,status:group.status,truncated:visible.length>0&&(group.truncated===true||visible.length>32),
+      endpoints:visible.slice(0,32).filter(row=>row&&typeof row.name==='string'&&row.name.length<=200)
         .map(({name,enabled,is_default})=>({name,enabled:typeof enabled==='boolean'?enabled:null,is_default:typeof is_default==='boolean'?is_default:null}))};
   });
 }
@@ -54,6 +58,11 @@ function normalizeAudio(raw) {
 let workspaceReady=false, workspaceLastMinute=-1, activityRows=[], activityRequest=0, audioRequest=0;
 function workspaceRender() {
   if (!workspaceReady) return;
+  if (typeof appDataLoadStatus==='string'&&appDataLoadStatus!=='ready') {
+    for (const id of ['workspace-overdue','workspace-today','workspace-events']) $('#'+id).textContent='—';
+    $('#workspace-summary').textContent=appDataLoadStatus==='loading'?'Loading local planning state…':'Local data could not be loaded. Reopen the application or complete a successful update before relying on this summary.';
+    return;
+  }
   const now=Date.now(), tasks=data.todos||[], events=data.events||[];
   const overdue=tasks.filter(t=>workspaceTaskMatch(t,'overdue','',now)).length;
   const today=tasks.filter(t=>workspaceTaskMatch(t,'today','',now)).length;

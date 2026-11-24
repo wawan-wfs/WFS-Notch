@@ -78,6 +78,16 @@ with sync_playwright() as pw:
     assert page.evaluate("shelfDecode(localStorage.getItem(SHELF_KEY)).entries.length") == 0
     page.get_by_role("button", name="Forget saved Shelf").click()
     assert page.evaluate("localStorage.getItem(SHELF_KEY)") is None
+    shelf.set_input_files([
+        {"name": "keep.txt", "mimeType": "text/plain", "buffer": b"keep"},
+        {"name": "remove.txt", "mimeType": "text/plain", "buffer": b"remove"},
+    ])
+    page.locator("#shelf-search").fill("remove")
+    page.get_by_role("button", name="Remove shown entries").click()
+    page.locator("#shelf-search").fill("")
+    assert page.locator("#shelf-count").inner_text() == "1 / 32"
+    assert page.locator("#shelf-list").get_by_text("keep.txt", exact=True).is_visible()
+    page.get_by_role("button", name="Clear Shelf").click()
     assert not page.locator("#shelf-remember").is_checked()
     page.get_by_role("button", name="System", exact=True).click()
     page.get_by_role("button", name="Read device info").click()

@@ -136,7 +136,7 @@ pub struct AudioInventory {
 fn read_audio_group(class: windows::Devices::Enumeration::DeviceClass) -> AudioGroup {
     use windows::Devices::Enumeration::DeviceInformation;
     let result = DeviceInformation::FindAllAsyncDeviceClass(class).and_then(|op| op.join());
-    let failed = |status| AudioGroup {
+    let failed = |status: &'static str| AudioGroup {
         status,
         endpoints: Vec::new(),
         truncated: false,
@@ -170,14 +170,17 @@ fn read_audio_group(class: windows::Devices::Enumeration::DeviceClass) -> AudioG
             .filter(|character| !character.is_control())
             .take(200)
             .collect::<String>();
+        let enabled = device.IsEnabled().ok();
+        let is_default = device.IsDefault().ok();
+        partial |= name.trim().is_empty() || enabled.is_none() || is_default.is_none();
         endpoints.push(AudioEndpoint {
             name: if name.trim().is_empty() {
                 "Unnamed audio endpoint".into()
             } else {
                 name
             },
-            enabled: device.IsEnabled().ok(),
-            is_default: device.IsDefault().ok(),
+            enabled,
+            is_default,
         });
     }
     AudioGroup {
@@ -196,13 +199,35 @@ fn read_audio_inventory() -> AudioInventory {
     }
 }
 
+#[cfg(windows)]
+static AUDIO_INVENTORY_BUSY: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+#[cfg(windows)]
+struct AudioInventoryGuard;
+
+#[cfg(windows)]
+impl Drop for AudioInventoryGuard {
+    fn drop(&mut self) {
+        AUDIO_INVENTORY_BUSY.store(false, std::sync::atomic::Ordering::Release);
+    }
+}
+
 #[tauri::command]
 pub async fn get_audio_inventory() -> Result<AudioInventory, String> {
     #[cfg(windows)]
     {
-        tauri::async_runtime::spawn_blocking(read_audio_inventory)
-            .await
-            .map_err(|_| "Audio inventory worker failed".to_owned())
+        use std::sync::atomic::Ordering;
+        AUDIO_INVENTORY_BUSY
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .map_err(|_| "Audio inventory already in progress".to_owned())?;
+        let guard = AudioInventoryGuard;
+        tauri::async_runtime::spawn_blocking(move || {
+            let _guard = guard;
+            read_audio_inventory()
+        })
+        .await
+        .map_err(|_| "Audio inventory worker failed".to_owned())
     }
     #[cfg(not(windows))]
     {

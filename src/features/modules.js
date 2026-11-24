@@ -311,6 +311,8 @@ function renderShelf(focusIndex = null) {
   $('#shelf-remember').checked = shelfRemember;
   $('#shelf-forget').disabled = !shelfRemember && !shelfStorageBlocked;
   $('#shelf-filter-count').textContent = visible.length + ' of ' + shelfEntries.length + ' shown';
+  $('#shelf-remove-shown').disabled = !visible.length;
+  $('#shelf-copy-names').disabled = !visible.length;
   if (!visible.length) list.append(node('div','empty',shelfEntries.length ? 'No matching files.' : 'Shelf is empty.'));
   visible.forEach(({item,index},position) => {
     const line = node('div','module-item');
@@ -365,6 +367,20 @@ function initShelf() {
     if (!shelfCommit([])) return;
     shelfStatus('Shelf cleared. Original files unchanged.');
     renderShelf(); input.focus();
+  });
+  $('#shelf-remove-shown').addEventListener('click', () => {
+    const visible = shelfView(shelfEntries,$('#shelf-search').value,$('#shelf-sort').value);
+    if (!visible.length || !confirm('Remove '+visible.length+' shown metadata entries? Original files stay unchanged.')) return;
+    const indexes = new Set(visible.map(row=>row.index));
+    if (!shelfCommit(shelfEntries.filter((_,index)=>!indexes.has(index)))) return;
+    shelfStatus('Removed '+visible.length+' shown entries. Original files unchanged.');
+    renderShelf(); $('#shelf-search').focus();
+  });
+  $('#shelf-copy-names').addEventListener('click', async () => {
+    const names = shelfView(shelfEntries,$('#shelf-search').value,$('#shelf-sort').value).map(row=>row.item.name);
+    if (!names.length) return;
+    try { await navigator.clipboard.writeText(names.join('\n')); shelfStatus('Copied '+names.length+' file names only.'); }
+    catch { shelfStatus('Clipboard unavailable. File names were not copied.'); }
   });
   $('#shelf-search').addEventListener('input',()=>renderShelf());
   $('#shelf-sort').addEventListener('change',()=>renderShelf());

@@ -14,6 +14,7 @@ const defaults = () => ({
   focus: { duration_seconds: 1500, remaining_seconds: 1500, ends_at_ms: null, completed: false, paused: false, cycle_enabled: false, phase: 'focus', completed_in_cycle: 0 },
 });
 let data = defaults();
+let appDataLoadStatus = 'loading';
 let selectedNoteId = null;
 let selectedTodoId = null;
 let selectedEventId = null;
@@ -638,6 +639,7 @@ function showInfo(message) { showToast(message, true); }
 function mutation(command, args = {}) {
   const task = writeQueue.catch(() => {}).then(async () => {
     data = await invoke(command, args);
+    appDataLoadStatus = 'ready';
     render();
     return true;
   }).catch((error) => { showError(error); return false; });
@@ -1717,8 +1719,12 @@ async function start() {
     $('#environment').textContent = 'BROWSER PREVIEW · MOCK STORAGE';
   }
   try {
-    data = await invoke('load_data');
-  } catch (error) { showError(error); }
+    const loaded = await invoke('load_data');
+    if (!loaded || !Array.isArray(loaded.todos) || !Array.isArray(loaded.notes) ||
+        !Array.isArray(loaded.events)) throw new Error('Invalid local state snapshot');
+    data = loaded;
+    appDataLoadStatus = 'ready';
+  } catch (error) { appDataLoadStatus = 'error'; showError(error); }
   data.settings = { ...defaults().settings, ...data.settings };
   data.focus = { ...defaults().focus, ...data.focus };
   data.events = Array.isArray(data.events) ? data.events : [];

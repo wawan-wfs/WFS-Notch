@@ -7,6 +7,8 @@ let mediaLastSample = null;
 let mediaLastSampleAt = 0;
 let mediaSessionChoices = [];
 let mediaControlPending = false;
+let mediaRefreshRequested = false;
+let mediaNeedsSelection = false;
 function mediaTime(ms) {
   if (!Number.isFinite(ms) || ms < 0) return '—';
   const secs = Math.floor(ms / 1000);
@@ -52,7 +54,8 @@ function renderMediaDetails(snapshot) {
     ? Math.min(100, Math.max(0, 100 * p / d)).toFixed(1) + '%' : '0%';
 }
 async function refreshMediaDetails(force = false) {
-  if (!nativeInvoke || mediaDetailsPending) return;
+  if (!nativeInvoke) return;
+  if (mediaDetailsPending) { if (force) mediaRefreshRequested = true; return; }
   const panel = document.querySelector('#panel-media');
   if (!panel?.classList.contains('active')) return;
   if (!force && Date.now() - mediaDetailsLastAt < 5000) return;
@@ -63,6 +66,7 @@ async function refreshMediaDetails(force = false) {
     renderSelectedPlayers(sessions, active?.source);
     const picker = document.querySelector('#media-player-picker');
     const selected = picker.value;
+    if (mediaNeedsSelection && !selected) { renderMediaDetails(null); return; }
     const choice = mediaSessionChoices.find(item => item.source === selected);
     if (choice?.ambiguous) {
       renderMediaDetails(null);
@@ -88,6 +92,10 @@ async function refreshMediaDetails(force = false) {
   } finally {
     mediaDetailsLastAt = Date.now();
     mediaDetailsPending = false;
+    if (mediaRefreshRequested) {
+      mediaRefreshRequested = false;
+      setTimeout(() => void refreshMediaDetails(true), 0);
+    }
   }
 }
 function updateInterpolatedProgress() {
@@ -113,6 +121,7 @@ function renderSelectedPlayers(sessions, systemCurrentSource) {
   const status = document.querySelector('#media-player-status');
   const safe = Array.isArray(sessions) ? sessions.filter(item => typeof item.source === 'string' && item.source.length > 0) : [];
   const previous = picker.value;
+  if (previous && !safe.some(item => item.source === previous)) mediaNeedsSelection = true;
   mediaSessionChoices = safe;
   picker.replaceChildren();
   if (!safe.length) {
@@ -123,6 +132,11 @@ function renderSelectedPlayers(sessions, systemCurrentSource) {
     picker.disabled = true;
     status.textContent = 'No Windows GSMTC sessions available right now.';
   } else {
+    if (mediaNeedsSelection) {
+      const placeholder = document.createElement('option');
+      placeholder.value = ''; placeholder.textContent = 'Choose a player';
+      picker.append(placeholder);
+    }
     for (const session of safe) {
       const option = document.createElement('option');
       option.value = session.source;
@@ -134,9 +148,11 @@ function renderSelectedPlayers(sessions, systemCurrentSource) {
     const preferred = safe.some(item => item.source === previous) ? previous
       : unambiguous.some(item => item.source === systemCurrentSource) ? systemCurrentSource
       : unambiguous[0]?.source;
-    picker.value = preferred || safe[0].source;
+    picker.value = mediaNeedsSelection ? '' : preferred || safe[0].source;
     picker.disabled = false;
-    status.textContent = unambiguous.length
+    status.textContent = mediaNeedsSelection
+      ? 'Selected player disconnected. Choose another player explicitly.'
+      : unambiguous.length
       ? 'Controls target only a uniquely identified Windows media app; options with multiple tabs are deliberately blocked.'
       : 'Multiple sessions share their app identity; controls are disabled to avoid changing the wrong tab.';
   }
@@ -169,7 +185,9 @@ async function controlSelectedPlayer(action) {
       : 'The selected player did not accept that command.';
     await refreshMediaDetails(true);
   } catch (error) {
-    status.textContent = 'Selected media session unavailable. Refresh the list and retry.';
+    renderSelectedPlayers([], null);
+    renderMediaDetails(null);
+    status.textContent = 'Selected media session unavailable. Refresh the list and choose again.';
     showError(error);
   } finally {
     mediaControlPending = false;
@@ -191,6 +209,10 @@ function initMediaSessions() {
     button.disabled = !nativeInvoke;
   }
   document.querySelector('#media-player-picker').addEventListener('change', () => {
+    const picker = document.querySelector('#media-player-picker');
+    mediaNeedsSelection = !picker.value;
+    for (const button of document.querySelectorAll('[data-selected-media]')) button.disabled = true;
+    renderMediaDetails(null);
     void refreshMediaDetails(true);
   });
   document.querySelector('#media-refresh').addEventListener('click', () => {

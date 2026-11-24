@@ -907,6 +907,7 @@ impl Store {
             self.data = previous;
             return Err(error);
         }
+        notifications::normalize_activity(&mut self.data.notification_activity, now_ms());
         if let Err(error) = self.save() {
             self.data = previous;
             return Err(error);

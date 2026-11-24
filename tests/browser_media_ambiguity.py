@@ -109,6 +109,15 @@ with sync_playwright() as pw:
     }""")
     page.evaluate("() => __testMedia.pending")
     assert page.locator("#media-track-title").inner_text() != "Stale Spotify"
+    # A disconnected selection must not fall through to an available different player.
+    page.evaluate("""() => {
+      __testMedia.blocked = false;
+      __testMedia.sessions = __testMedia.sessions.filter(item => item.source !== 'vlc.id');
+    }""")
+    page.evaluate("() => refreshMediaDetails(true)")
+    page.wait_for_function("() => !mediaDetailsPending && document.querySelector('#media-player-picker').value === ''")
+    assert page.locator('[data-selected-media="toggle"]').is_disabled()
+    assert "Choose another player" in page.locator("#media-player-status").inner_text()
     assert not errors, f"Browser media JavaScript errors: {errors}"
     browser.close()
 print("PASS: GSMTC duplicate-app ambiguity, control restrictions, stale selection and bounded progress (mock only, native Windows NOT TESTED)")

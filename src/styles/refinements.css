@@ -216,3 +216,6 @@ main {min-width:0;}
 .workspace-card .module-info b,.workspace-card .module-info small{white-space:normal;overflow-wrap:anywhere}
 @media(max-width:560px){.workspace-filters{grid-template-columns:minmax(0,1fr)}.workspace-metrics{gap:5px}.workspace-metrics button{padding:7px}}
 @media(forced-colors:active){.workspace-card,.workspace-metrics button{border:1px solid ButtonText}}
+.phase44-card .tool-actions{flex-wrap:wrap}
+.workspace-metrics button:hover{border-color:var(--accent)}
+:root[data-ui-contrast="high"] .workspace-metrics button{background:var(--panel);border-color:var(--line)}
