@@ -86,19 +86,19 @@ async function refreshSystemDetails(force = false) {
 }
 
 let deviceRequest = 0;
-async function readDeviceInfo() {
+async function readDeviceInfo(readNative = nativeInvoke ? () => invoke('get_device_diagnostics') : null) {
   const request = ++deviceRequest;
   const status = $('#device-status'), list = $('#device-results');
   const read = $('#device-read'), clear = $('#device-clear');
   list.replaceChildren();
-  if (!nativeInvoke) {
+  if (!readNative) {
     status.textContent = 'Device information requires the installed Windows app.';
     return;
   }
   status.textContent = 'Reading local device information…';
   read.disabled = true; clear.disabled = false;
   try {
-    const result = await invoke('get_device_diagnostics');
+    const result = await readNative();
     if (request !== deviceRequest) return;
     const fields = [['Operating system',result.os_name],['OS version',result.os_version],
       ['Kernel version',result.kernel_version],['App architecture',result.architecture],

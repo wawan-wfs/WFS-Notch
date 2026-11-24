@@ -10,3 +10,5 @@ Baseline: migrated repository wawan-wfs/WFS-Notch, main ae2b2b3a3edbff83a892afb4
 
 ## Acceptance
 Run existing CI manually on this branch before merge. Check all 16 modules and narrow viewport, note source deletion, native file picker, focus, device clear while reading, error path, original files untouched, signed/unsigned status and package hashes. Keep existing functionality and main untouched until checks pass. Coverage remains last reported 28.9%; do not claim increase without updated fixed 38-category evidence.
+
+Additional fixtures: device partial fields, failure, pending state, clear and late response rejection; both contrast themes checked in the existing four-profile screenshot suite. These added browser fixtures have not yet been executed.

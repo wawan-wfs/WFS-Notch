@@ -70,6 +70,31 @@ with sync_playwright() as pw:
     page.get_by_role("button", name="Read device info").click()
     assert "requires the installed Windows app" in page.locator("#device-status").inner_text()
     assert page.locator("#device-results").inner_text() == ""
+    # Deterministic bridge fixtures, not Windows hardware evidence.
+    page.evaluate("""async () => {
+      await readDeviceInfo(() => Promise.resolve({os_name:'Fixture OS',architecture:'x86_64',logical_cpus:4}));
+    }""")
+    assert page.locator("#device-results").get_by_text("Fixture OS", exact=True).is_visible()
+    assert page.locator("#device-results").get_by_text("Unavailable", exact=True).count() == 2
+    page.evaluate("() => readDeviceInfo(() => Promise.reject(new Error('fixture failure')))")
+    assert "failed or unavailable" in page.locator("#device-status").inner_text()
+    page.evaluate("""() => {
+      window.deviceFixture = {};
+      window.deviceFixture.pending = readDeviceInfo(() => new Promise(resolve => {
+        window.deviceFixture.resolve = resolve;
+      }));
+    }""")
+    assert page.locator("#device-read").is_disabled()
+    assert "Reading local" in page.locator("#device-status").inner_text()
+    page.get_by_role("button", name="Clear device info").click()
+    page.evaluate("""async () => {
+      window.deviceFixture.resolve({os_name:'Stale'});
+      await window.deviceFixture.pending;
+    }""")
+    assert page.locator("#device-results").inner_text() == ""
+    assert page.locator("#device-status").inner_text() == "Device information cleared."
+    assert page.locator("#device-read").is_enabled()
+    page.screenshot(path=str(EVIDENCE / "browser-phase44-device-cleared.png"))
     page.get_by_role("button", name="Dock", exact=True).click()
     # Unsafe schemes cannot be added through the preview backend.
     bad = page.evaluate("""async () => {

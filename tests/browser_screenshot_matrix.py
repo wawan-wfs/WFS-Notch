@@ -69,6 +69,27 @@ with sync_playwright() as pw:
         for name in js_files:
             page.add_script_tag(content=(UI / name).read_text(encoding="utf-8"))
         page.locator("#expanded").wait_for(state="visible")
+        # Compare rendered CSS foregrounds against the actual semantic token.
+        # Full pixel-background contrast still needs independent visual QA.
+        for contrast in ("normal", "high"):
+            assert page.evaluate("""(contrast) => {
+              const root = document.documentElement;
+              const previous = root.getAttribute('data-ui-contrast');
+              root.setAttribute('data-ui-contrast', contrast);
+              const fixture = document.createElement('div');
+              fixture.innerHTML = '<p class="footnote">Footnote</p><div class="todo-item done"><span class="title">Done</span></div><div class="note-card"><small>Preview</small></div><div class="note-foot">Saved</div><footer>Footer</footer>';
+              document.body.append(fixture);
+              const probe = document.createElement('span');
+              probe.style.color = 'var(--muted)';
+              fixture.append(probe);
+              const color = getComputedStyle(probe).color;
+              const selectors = ['.footnote','.todo-item.done .title','.note-card small','.note-foot','footer'];
+              const valid = selectors.every(selector => getComputedStyle(fixture.querySelector(selector)).color === color);
+              fixture.remove();
+              if (previous === null) root.removeAttribute('data-ui-contrast');
+              else root.setAttribute('data-ui-contrast', previous);
+              return valid;
+            }""", contrast), "Audited text must use the theme muted token: " + contrast
         tabs = page.locator(".tabs .tab")
         assert tabs.count() == 16, "The original 16 UI modules must remain available"
         for index in range(tabs.count()):
