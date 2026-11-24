@@ -127,13 +127,13 @@ function calculateSimple(expression) {
   return Number(result.toPrecision(12)).toString();
 }
 const moduleKeywords = {
-  home: 'dashboard overview', todos: 'todo task reminders', notes: 'draft writing',
+  home: 'dashboard overview planning', todos: 'todo task reminders', notes: 'draft writing',
   calendar: 'events appointments ics', timer: 'pomodoro focus session',
-  system: 'cpu ram disk network telemetry', health: 'water wellness break',
+  system: 'cpu ram disk network telemetry audio devices', health: 'water wellness break',
   day: 'schedule today', countdown: 'timer alarm', weather: 'temperature forecast',
   flashcards: 'study cards', habits: 'streak checklist', dock: 'bookmarks launcher links shelf files',
   media: 'music audio player volume', tools: 'stopwatch calculator password',
-  settings: 'preferences appearance contrast density display backups',
+  settings: 'preferences appearance contrast density display backups notification activity history',
 };
 let paletteOpener = null;
 let paletteSession = 0;

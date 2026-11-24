@@ -1,5 +1,12 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Phase 46 — v0.45.0 acceptance candidate
+
+- Persistent, bounded title-free WFS reminder activity for calendar/task enqueue results, independent of reservation ledger and backup restore.
+- Explicit Windows audio input/output endpoint inventory via WinRT; no capture, playback, IDs or setting changes.
+- Dashboard planning widgets, filtered task and event lists, shared responsive workspace design, media capability and failure guards.
+- Model regressions and Rust journal tests added; build, full browser and physical acceptance pending.
+
 ## Phase 45 — v0.45.0 candidate hardening (not released)
 
 - Opt-in local metadata persistence, strict versioned schema, safe basename checks, bounded storage, search/sort, forget and failure-aware writes.

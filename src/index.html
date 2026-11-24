@@ -53,6 +53,7 @@
           </div>
           <div class="home-upcoming"><span class="mini-label">NEXT CALENDAR EVENT</span><span id="next-event">No upcoming events</span><button class="text-button" id="go-calendar" type="button">View calendar →</button></div>
           <div class="phase4-home">Habits completed today <b id="home-habit-progress">0 / 0</b> · Pinned links <b id="home-link-count">0</b></div>
+          <section class="workspace-card" aria-labelledby="workspace-title"><div class="section-heading"><div><h3 id="workspace-title">Your next actions</h3><p>Live local planning summary</p></div></div><div class="workspace-metrics"><button type="button" data-workspace-go="todos" data-workspace-filter="overdue"><small>OVERDUE TASKS</small><b id="workspace-overdue">0</b></button><button type="button" data-workspace-go="todos" data-workspace-filter="today"><small>DUE TODAY</small><b id="workspace-today">0</b></button><button type="button" data-workspace-go="calendar" data-workspace-filter="today"><small>TODAY'S EVENTS</small><b id="workspace-events">0</b></button></div><p class="event-hint" id="workspace-summary">Loading local planning state…</p><div class="tool-actions"><button class="secondary" type="button" data-workspace-go="dock">Open File Shelf</button><button class="secondary" type="button" data-workspace-go="media">Media controls</button></div></section>
           <div class="footnote">Local-first · Rust backend · Original WFS Notch design</div>
         </section>
         <section class="panel" id="panel-todos">
@@ -78,6 +79,7 @@
           </form>
           <small class="todo-help">Task due dates remain private and local. Optional desktop reminders can be enabled separately in Settings; they require the installed Windows app and WFS notification consent.</small>
           <small class="todo-help" id="task-repeat-help">Repeating tasks need a due date. Leave the timezone blank for elapsed intervals. With a timezone, enter the due time in that zone. Missing DST times are skipped and repeated times use the first occurrence.</small>
+          <div class="workspace-filters"><label>Find tasks<input id="workspace-task-search" type="search" maxlength="120" placeholder="Search titles"></label><label>Show tasks<select id="workspace-task-filter"><option value="all">All tasks</option><option value="open">Open</option><option value="today">Due today</option><option value="overdue">Overdue</option><option value="high">High priority</option><option value="done">Completed</option></select></label></div><p class="event-hint" id="workspace-task-count" aria-live="polite"></p>
           <div id="todo-list" class="list-scroll" aria-label="Saved tasks"></div>
           <details class="todo-history">
             <summary id="todo-history-summary">Recent task completions</summary>
@@ -170,6 +172,7 @@
             <small id="ics-status" role="status">Local-only. Unchanged series preserve the source recurrence rule on export; edited or canceled instances export safely as independent events. No cloud sync.</small>
           </details>
           <div class="event-hint">Timed start/end dates are stored as UTC instants with an exclusive optional end and shown in the local timezone. All-day dates retain calendar dates without an implicit timezone; end dates are exclusive and have no automatic reminder. Reminders are only displayed while this app is running.</div>
+          <div class="workspace-filters"><label>Find events<input id="workspace-event-search" type="search" maxlength="120" placeholder="Search titles"></label><label>Show events<select id="workspace-event-filter"><option value="all">All events</option><option value="today">Today</option><option value="upcoming">Upcoming / ongoing</option><option value="past">Past</option></select></label></div><p class="event-hint" id="workspace-event-count" aria-live="polite"></p>
           <div id="event-list" class="event-list" aria-live="polite"></div>
         </section>
         <section class="panel" id="panel-system">
@@ -184,6 +187,7 @@
             <section><h3>Network interfaces</h3><div id="system-networks" aria-live="polite">Read-only on Windows · no preview numbers</div></section>
           </div>
           <section class="phase44-card" aria-labelledby="device-heading"><div class="section-heading"><div><h3 id="device-heading">Device diagnostics</h3><p>On-demand read-only OS, CPU, memory and uptime summary. No identifiers or network requests.</p></div></div><div class="tool-actions"><button id="device-read" class="secondary" type="button">Read device info</button><button id="device-clear" class="secondary" type="button" disabled>Clear device info</button></div><p id="device-status" class="event-hint" role="status">Not requested.</p><div id="device-results" class="module-list"></div></section>
+          <section class="workspace-card" aria-labelledby="audio-heading"><h3 id="audio-heading">Audio devices</h3><p class="event-hint">Read local Windows audio endpoint names and availability on request. No device IDs, recording, playback, or setting changes.</p><div class="tool-actions"><button id="audio-read" type="button" class="secondary">Read audio devices</button><button id="audio-clear" type="button" class="secondary" disabled>Clear audio list</button></div><p id="audio-status" class="event-hint" role="status">Not requested.</p><div id="audio-list" class="module-list"></div></section>
           <p class="event-hint">Disk and network totals are local OS counters, not speed tests. No Wi-Fi scanning, admin privileges or uploads.</p>
           <p class="event-hint">Refreshes every 4 seconds while this panel is open. Does not track running apps, upload telemetry, or run a background service.</p>
         </section>
@@ -361,6 +365,7 @@
               <button type="button" id="notification-scheduler-refresh" class="secondary">Check status</button>
             </div>
             <p class="event-hint" id="notification-scheduler-status" role="status" aria-live="polite">Native reminder status is available only in the installed Windows desktop app.</p>
+            <section class="workspace-card" aria-labelledby="activity-heading"><h3 id="activity-heading">Notification activity</h3><p class="event-hint">WFS calendar and task enqueue attempts only. No notification titles or bodies. An accepted enqueue does not prove Windows displayed a toast. Up to 200 entries / 30 days; old backups do not restore this journal.</p><div class="workspace-filters"><label>Kind<select id="activity-kind"><option value="all">All</option><option value="calendar">Calendar</option><option value="task">Task</option></select></label><label>Outcome<select id="activity-outcome"><option value="all">All</option><option value="enqueue_accepted">Accepted</option><option value="retry_scheduled">Retry scheduled</option><option value="retry_exhausted">Retry exhausted</option></select></label></div><div class="tool-actions"><button id="activity-read" class="secondary" type="button">Read activity</button><button id="activity-clear" class="secondary" type="button" disabled>Clear history</button></div><p id="activity-status" class="event-hint" role="status">Not requested.</p><div id="activity-list" class="module-list"></div></section>
           </div>
           <div class="display-options" aria-labelledby="display-options-title">
             <div class="settings-row">
@@ -411,5 +416,6 @@
   <script src="features/media.js" defer></script>
   <script src="features/accessibility.js" defer></script>
   <script src="features/displays.js" defer></script>
+  <script src="features/workspace.js" defer></script>
 </body>
 </html>

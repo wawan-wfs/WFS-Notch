@@ -66,7 +66,7 @@ For a static browser preview, open `src/index.html`. Browser mode is not an emul
 
 Native notifications are off by default, task due alerts require a second opt-in and unfinished tasks with due times, and private event/task titles are hidden until the user opts in. The notification pause option affects only WFS Notch. All user data remains on the device except features where the user explicitly requests third-party weather or opens an external link. No public tunnel or remote shell is deployed.
 
-**Development candidate: v0.45.0, Phase 45 (pending CI and Windows acceptance; last baseline v0.44.0).** Windows CI builds and regression tests verify code quality and package creation, not real-device behavior or complete equivalence to any other product. This is a development release, unsigned and not independently certified on physical Windows machines.
+**Development candidate: v0.45.0, Phase 46 (pending CI and Windows acceptance; last baseline v0.44.0).** Windows CI builds and regression tests verify code quality and package creation, not real-device behavior or complete equivalence to any other product. This is a development release, unsigned and not independently certified on physical Windows machines.
 
 Calendar series moves are local-only. In **Calendar → Move series**, choose exact UTC/all-day days or **Source wall time** for a saved IANA timezone. A DST gap leaves the affected appointment unchanged. An ambiguous start uses the earlier instant. The review shows both time and UTC instant. Elapsed duration and cancellation history are preserved, and the original recurrence is not regenerated.
 

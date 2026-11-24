@@ -111,3 +111,101 @@ pub fn get_device_diagnostics() -> Result<DeviceDiagnostics, String> {
         uptime_seconds: Some(sysinfo::System::uptime()),
     })
 }
+
+#[derive(Debug, Serialize)]
+pub struct AudioEndpoint {
+    name: String,
+    enabled: Option<bool>,
+    is_default: Option<bool>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AudioGroup {
+    status: &'static str,
+    endpoints: Vec<AudioEndpoint>,
+    truncated: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AudioInventory {
+    output: AudioGroup,
+    input: AudioGroup,
+}
+
+#[cfg(windows)]
+fn read_audio_group(class: windows::Devices::Enumeration::DeviceClass) -> AudioGroup {
+    use windows::Devices::Enumeration::DeviceInformation;
+    let result = DeviceInformation::FindAllAsyncDeviceClass(class).and_then(|op| op.join());
+    let failed = |status| AudioGroup {
+        status,
+        endpoints: Vec::new(),
+        truncated: false,
+    };
+    let devices = match result {
+        Ok(devices) => devices,
+        Err(error) => {
+            return failed(if error.code().0 as u32 == 0x80070005 {
+                "denied"
+            } else {
+                "unavailable"
+            });
+        }
+    };
+    let Ok(count) = devices.Size() else {
+        return failed("unavailable");
+    };
+    let mut endpoints = Vec::new();
+    let mut partial = false;
+    for index in 0..count.min(32) {
+        let Ok(device) = devices.GetAt(index) else {
+            partial = true;
+            continue;
+        };
+        let name = device
+            .Name()
+            .ok()
+            .map(|name| name.to_string_lossy())
+            .unwrap_or_default()
+            .chars()
+            .filter(|character| !character.is_control())
+            .take(200)
+            .collect::<String>();
+        endpoints.push(AudioEndpoint {
+            name: if name.trim().is_empty() {
+                "Unnamed audio endpoint".into()
+            } else {
+                name
+            },
+            enabled: device.IsEnabled().ok(),
+            is_default: device.IsDefault().ok(),
+        });
+    }
+    AudioGroup {
+        status: if partial { "partial" } else { "ok" },
+        endpoints,
+        truncated: count > 32,
+    }
+}
+
+#[cfg(windows)]
+fn read_audio_inventory() -> AudioInventory {
+    use windows::Devices::Enumeration::DeviceClass;
+    AudioInventory {
+        output: read_audio_group(DeviceClass::AudioRender),
+        input: read_audio_group(DeviceClass::AudioCapture),
+    }
+}
+
+#[tauri::command]
+pub async fn get_audio_inventory() -> Result<AudioInventory, String> {
+    #[cfg(windows)]
+    {
+        tauri::async_runtime::spawn_blocking(read_audio_inventory)
+            .await
+            .map_err(|_| "Audio inventory worker failed".to_owned())
+    }
+    #[cfg(not(windows))]
+    {
+        Err("Audio inventory is available on Windows only".into())
+    }
+}

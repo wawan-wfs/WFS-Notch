@@ -36,6 +36,88 @@ impl ReminderRetry {
     }
 }
 
+
+const ACTIVITY_LIMIT: usize = 200;
+const ACTIVITY_RETENTION_MS: u64 = 30 * 24 * 60 * 60 * 1_000;
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum ActivityKind {
+    Calendar,
+    Task,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum ActivityOutcome {
+    EnqueueAccepted,
+    RetryScheduled,
+    RetryExhausted,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub(super) struct NotificationActivity {
+    at_ms: u64,
+    kind: ActivityKind,
+    outcome: ActivityOutcome,
+    attempt: u8,
+}
+
+pub(super) fn normalize_activity(rows: &mut Vec<NotificationActivity>, now: u128) {
+    let now = u64::try_from(now).unwrap_or(u64::MAX);
+    let cutoff = now.saturating_sub(ACTIVITY_RETENTION_MS);
+    rows.retain(|row| {
+        row.at_ms >= cutoff
+            && row.at_ms <= now.saturating_add(ACTIVITY_RETENTION_MS)
+            && (1..=MAX_RETRY_ATTEMPTS).contains(&row.attempt)
+    });
+    rows.sort_by_key(|row| row.at_ms);
+    if rows.len() > ACTIVITY_LIMIT {
+        let excess = rows.len() - ACTIVITY_LIMIT;
+        rows.drain(..excess);
+    }
+}
+
+fn record_activity(
+    data: &mut AppData,
+    now: u128,
+    kind: ActivityKind,
+    outcome: ActivityOutcome,
+    attempt: u8,
+) {
+    if let Ok(at_ms) = u64::try_from(now) {
+        data.notification_activity.push(NotificationActivity {
+            at_ms,
+            kind,
+            outcome,
+            attempt,
+        });
+        normalize_activity(&mut data.notification_activity, now);
+    }
+}
+
+#[tauri::command]
+pub fn get_notification_activity(
+    store: State<'_, Mutex<Store>>,
+) -> Result<Vec<NotificationActivity>, String> {
+    let guard = store
+        .lock()
+        .map_err(|_| "Storage lock unavailable".to_owned())?;
+    let mut rows = guard.data.notification_activity.clone();
+    normalize_activity(&mut rows, now_ms());
+    rows.reverse();
+    Ok(rows)
+}
+
+#[tauri::command]
+pub fn clear_notification_activity(store: State<'_, Mutex<Store>>) -> Result<bool, String> {
+    with_store(store, |data| {
+        data.notification_activity.clear();
+        Ok(())
+    })?;
+    Ok(true)
+}
+
 #[derive(Serialize)]
 pub struct ReminderSchedulerStatus {
     enabled: bool,
@@ -320,7 +402,7 @@ where
     }
     let key = delivery_key(&event);
     let expires_at = reservation_expires_at(&event);
-    reserve_and_send(&mut guard, key, expires_at, now, || {
+    reserve_and_send(&mut guard, key, expires_at, now, ActivityKind::Calendar, || {
         sender(&event, &settings)
     })
 }
@@ -332,6 +414,7 @@ fn reserve_and_send<F>(
     key: String,
     expires_at: u128,
     now: u128,
+    kind: ActivityKind,
     sender: F,
 ) -> Result<bool, String>
 where
@@ -369,6 +452,12 @@ where
                 },
             );
             data.reminder_deliveries.remove(&key);
+            let outcome = if attempts == MAX_RETRY_ATTEMPTS {
+                ActivityOutcome::RetryExhausted
+            } else {
+                ActivityOutcome::RetryScheduled
+            };
+            record_activity(data, now, kind, outcome, attempts);
             Ok(())
         })?;
         // Do not log event title, source UID, sender error body or descriptions.
@@ -376,12 +465,16 @@ where
     }
     // Success already has a durably committed reservation. Removing a stale
     // retry marker is housekeeping, not a reason to repeat the OS send.
-    if guard.data.reminder_retries.contains_key(&key) {
-        let _ = guard.transact(|data| {
-            data.reminder_retries.remove(&key);
-            Ok(())
-        });
-    }
+    let attempt = guard.data.reminder_retries.get(&key).map_or(1, |previous| {
+        previous.attempts.saturating_add(1).min(MAX_RETRY_ATTEMPTS)
+    });
+    // The journal is best-effort after an accepted enqueue. Failure to save it
+    // does not undo the durable reservation or permit another send.
+    let _ = guard.transact(|data| {
+        data.reminder_retries.remove(&key);
+        record_activity(data, now, kind, ActivityOutcome::EnqueueAccepted, attempt);
+        Ok(())
+    });
     Ok(true)
 }
 
@@ -412,7 +505,7 @@ where
     let key = task_delivery_key(&todo).ok_or("Task due date was cleared")?;
     let expires_at = u128::from(task_alert_at(&todo).ok_or("Task due date was cleared")?)
         .saturating_add(LEDGER_RETENTION_MS);
-    reserve_and_send(&mut guard, key, expires_at, now, || {
+    reserve_and_send(&mut guard, key, expires_at, now, ActivityKind::Task, || {
         sender(&todo, &settings)
     })
 }
@@ -612,6 +705,32 @@ pub fn notify_due_event(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn activity_is_bounded_redacted_and_expires() {
+        let now = u128::from(ACTIVITY_RETENTION_MS) + 100;
+        let mut data = AppData::default();
+        for _ in 0..250 {
+            record_activity(&mut data, now, ActivityKind::Task, ActivityOutcome::EnqueueAccepted, 1);
+        }
+        assert_eq!(data.notification_activity.len(), ACTIVITY_LIMIT);
+        let json = serde_json::to_value(&data.notification_activity[0]).unwrap();
+        assert_eq!(json.as_object().unwrap().len(), 4);
+        assert_eq!(json["outcome"], "enqueue_accepted");
+        normalize_activity(&mut data.notification_activity, now + u128::from(ACTIVITY_RETENTION_MS) + 1);
+        assert!(data.notification_activity.is_empty());
+    }
+
+    #[test]
+    fn backup_cannot_resurrect_cleared_activity_or_change_reservation() {
+        let mut current = AppData::default();
+        current.reminder_deliveries.insert("opaque".into(), 1000);
+        let mut backup = current.clone();
+        record_activity(&mut backup, 100, ActivityKind::Calendar, ActivityOutcome::RetryScheduled, 1);
+        crate::preserve_reminder_history(&mut backup, &current);
+        assert!(backup.notification_activity.is_empty());
+        assert_eq!(backup.reminder_deliveries, current.reminder_deliveries);
+    }
 
     fn task(id: &str, due_at_ms: u64) -> Todo {
         Todo {

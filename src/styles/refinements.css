@@ -197,3 +197,22 @@ main {min-width:0;}
 .panel.active :is(.event-hint,.system-detail,.empty){overflow-wrap:anywhere}
 @media(max-width:560px){.shelf-toolbar{grid-template-columns:minmax(0,1fr)}.phase44-card .tool-actions{flex-wrap:wrap}}
 @media(forced-colors:active){.tab.active,.primary,.secondary,.phase44-card{border:1px solid ButtonText}.tab.active{outline:2px solid Highlight}.shelf-input::file-selector-button{border:1px solid ButtonText}}
+
+/* Phase 46: shared planning controls, explicit audio and activity workspaces. */
+.workspace-card{padding:12px;margin:12px 0;border-radius:12px;border:1px solid var(--line);background:var(--panel);min-width:0}
+.workspace-card h3{font-size:14px;margin:0 0 6px;color:var(--text)}
+.workspace-card .section-heading{margin-bottom:8px}
+.workspace-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.workspace-metrics button{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;padding:10px;background:#1a1c23;border:1px solid var(--line);border-radius:10px;color:var(--text);text-align:left}
+.workspace-metrics small{font-size:10px;color:var(--muted);white-space:normal;overflow-wrap:anywhere}
+.workspace-metrics b{font-size:22px;font-variant-numeric:tabular-nums}
+.workspace-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0 5px}
+.workspace-filters label{display:grid;min-width:0;gap:4px;color:var(--muted);font-size:11px}
+.workspace-filters input,.workspace-filters select{min-width:0;width:100%;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:8px;font:inherit}
+.workspace-card .tool-actions{flex-wrap:wrap}
+.audio-group{display:grid;gap:6px;padding:8px 0;border-bottom:1px solid var(--line)}
+.audio-group:last-child{border:0}
+.audio-group .module-info{min-width:0;overflow-wrap:anywhere}
+.workspace-card .module-info b,.workspace-card .module-info small{white-space:normal;overflow-wrap:anywhere}
+@media(max-width:560px){.workspace-filters{grid-template-columns:minmax(0,1fr)}.workspace-metrics{gap:5px}.workspace-metrics button{padding:7px}}
+@media(forced-colors:active){.workspace-card,.workspace-metrics button{border:1px solid ButtonText}}

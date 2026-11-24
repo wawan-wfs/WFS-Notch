@@ -1,0 +1,7 @@
+# Phase 46 candidate report
+
+Baseline ab376bfedb7167bb21ce915290f98ff44c19b92d. Kept version v0.45.0 and main untouched. Node and Chromium available locally, rustc/cargo not installed, direct clone failed DNS; GitHub connector does not expose workflow_dispatch. No current CI run, installer, full browser or native test claim.
+
+Implemented: separate bounded WFS notification activity journal (calendar/task enqueue accepted, retry scheduled/exhausted; 200 records, 30 days; no titles/body/IDs, clear leaves reservations unchanged, restore keeps current journal); journal write after accepted enqueue is best effort and not proof of visible toast. Audio input/output inventory using WinRT DeviceInformation, per-group denied/unavailable/partial, max 32 each, no endpoint IDs or audio operations. New Dashboard widgets plus task/event filters; selected media capability guard, stale session list disabled on failure. Added responsive shared workspace styles and existing 16 tabs retained. Shelf persistence maintained, native picker still requires real Windows acceptance; no new file operations. Native changes not compiled. Notification test toasts not included in history. Existing backups may retain historical state until rotated; history not restored from them. Browser screenshot matrix now loads workspace; native/Rust and full browser regressions pending.
+
+Executed 22 model assertions against exact workspace functions using JS runtime. Rust activity tests added but not run. Feature parity last measured 28.9% (38 categories); no direct Poni test.

@@ -793,10 +793,13 @@ function renderTodos() {
   const list = $('#todo-list');
   list.replaceChildren();
   if (!data.todos.length) {
+    if (typeof workspaceTasks === 'function') workspaceTasks(data.todos);
     list.append(node('div', 'empty', 'No tasks yet. Add one to get started.'));
     return;
   }
-  for (const item of [...data.todos].reverse()) {
+  const visibleTodos = typeof workspaceTasks === 'function' ? workspaceTasks(data.todos) : data.todos;
+  if (!visibleTodos.length) list.append(node('div', 'empty', 'No tasks match the current filter.'));
+  for (const item of [...visibleTodos].reverse()) {
     const line = node('div', 'todo-item' + (item.done ? ' done' : ''));
     const check = node('button', 'check', item.done ? '✓' : '');
     check.type = 'button';
@@ -980,10 +983,13 @@ function renderCalendar() {
   const list = $('#event-list');
   list.replaceChildren();
   if (!events.length) {
+    if (typeof workspaceEvents === 'function') workspaceEvents(events);
     list.append(node('div', 'empty', 'Your calendar is clear. Create your first event.'));
     return;
   }
-  for (const event of events) {
+  const visibleEvents = typeof workspaceEvents === 'function' ? workspaceEvents(events) : events;
+  if (!visibleEvents.length) list.append(node('div', 'empty', 'No events match the current filter.'));
+  for (const event of visibleEvents) {
     const past = event.all_day ? event.all_day.end_date_exclusive <= localDay
       : (event.ends_at_ms ?? event.starts_at_ms) < Date.now();
     const line = node('div', 'event-item' + (past ? ' past' : ''));
@@ -1240,6 +1246,7 @@ function render() {
   renderTimer();
   if (typeof renderExtras === 'function') renderExtras();
   if (typeof renderParity === 'function') renderParity();
+  if (typeof workspaceRender === 'function') workspaceRender();
 }
 
 async function saveRevisionNote(draft) {

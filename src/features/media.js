@@ -6,6 +6,7 @@ let mediaDetailsLastAt = 0;
 let mediaLastSample = null;
 let mediaLastSampleAt = 0;
 let mediaSessionChoices = [];
+let mediaControlPending = false;
 function mediaTime(ms) {
   if (!Number.isFinite(ms) || ms < 0) return '—';
   const secs = Math.floor(ms / 1000);
@@ -81,8 +82,11 @@ async function refreshMediaDetails(force = false) {
     mediaDetailsLastAt = Date.now();
   } catch (error) {
     renderMediaDetails(null);
-    document.querySelector('#media-track-artist').textContent = 'Windows media sessions are unavailable: ' + (error?.message || String(error));
+    renderSelectedPlayers([], null);
+    document.querySelector('#media-track-artist').textContent = 'Windows media sessions are unavailable. Refresh to retry.';
+    document.querySelector('#media-player-status').textContent = 'Session list unavailable; selected controls disabled.';
   } finally {
+    mediaDetailsLastAt = Date.now();
     mediaDetailsPending = false;
   }
 }
@@ -141,19 +145,22 @@ function renderSelectedPlayers(sessions, systemCurrentSource) {
     const action = button.dataset.selectedMedia;
     const flag = action === 'toggle' ? 'can_toggle'
       : action === 'next' ? 'can_next' : 'can_previous';
-    button.disabled = picker.disabled || !chosen || chosen.ambiguous === true || chosen[flag] !== true;
+    button.disabled = mediaControlPending || picker.disabled || !chosen || chosen.ambiguous === true || chosen[flag] !== true;
   }
 }
 async function controlSelectedPlayer(action) {
   const picker = document.querySelector('#media-player-picker');
   const status = document.querySelector('#media-player-status');
-  if (!nativeInvoke || !picker.value) return;
+  if (!nativeInvoke || !picker.value || mediaControlPending) return;
   const source = picker.value;
   const selected = mediaSessionChoices.find(item => item.source === source);
   if (!selected || selected.ambiguous === true) {
     status.textContent = 'Control refused: choose a uniquely identifiable Windows media session.';
     return;
   }
+  const flag = action === 'toggle' ? 'can_toggle' : action === 'next' ? 'can_next' : action === 'previous' ? 'can_previous' : null;
+  if (!flag || selected[flag] !== true) { status.textContent = 'This action is not supported by the selected player.'; return; }
+  mediaControlPending = true;
   for (const button of document.querySelectorAll('[data-selected-media]')) button.disabled = true;
   try {
     const accepted = await invoke('control_media_session', {source, action});
@@ -165,6 +172,7 @@ async function controlSelectedPlayer(action) {
     status.textContent = 'Selected media session unavailable. Refresh the list and retry.';
     showError(error);
   } finally {
+    mediaControlPending = false;
     // Do not re-enable controls unsupported by the current player.
     const snapshot = mediaSessionChoices.find(item => item.source === picker.value);
     for (const button of document.querySelectorAll('[data-selected-media]')) {

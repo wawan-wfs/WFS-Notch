@@ -614,6 +614,8 @@ struct AppData {
     // Failed OS enqueue attempts use a bounded persistent backoff journal.
     // No event titles or notification bodies are stored in this map.
     reminder_retries: HashMap<String, notifications::ReminderRetry>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    notification_activity: Vec<notifications::NotificationActivity>,
     // Local-only ICS cancellation markers; reimport never silently restores deleted events.
     calendar_tombstones: HashSet<String>,
     // A deliberate reset starts a new history generation. An older snapshot
@@ -633,6 +635,7 @@ struct AppData {
 
 impl AppData {
     fn sanitize(&mut self) {
+        notifications::normalize_activity(&mut self.notification_activity, now_ms());
         self.health.water_glasses = self.health.water_glasses.min(40);
         self.health.break_count = self.health.break_count.min(100);
         self.health.calm_minutes = self.health.calm_minutes.min(600);
@@ -2094,6 +2097,8 @@ fn list_backups(store: State<'_, Mutex<Store>>) -> Result<Vec<BackupInfo>, Strin
 /// The current local journal is authoritative for at-most-once attempts, while
 /// older backup entries may add history but never erase it.
 fn preserve_reminder_history(recovered: &mut AppData, existing: &AppData) {
+    // Activity is a current local journal, not restorable from an old backup.
+    recovered.notification_activity = existing.notification_activity.clone();
     let current: HashMap<_, _> = existing
         .todos
         .iter()
@@ -2466,6 +2471,7 @@ fn main() {
             get_system_snapshot,
             system_details::get_system_details,
             system_details::get_device_diagnostics,
+            system_details::get_audio_inventory,
             media_sessions::get_active_media_session,
             media_sessions::get_media_session_by_source,
             media_sessions::list_media_sessions,
@@ -2475,6 +2481,8 @@ fn main() {
             notifications::set_task_due_reminders,
             notifications::notify_test,
             notifications::get_reminder_scheduler_status,
+            notifications::get_notification_activity,
+            notifications::clear_notification_activity,
             notifications::get_windows_notification_permission,
             notifications::notify_due_event,
             set_accent,

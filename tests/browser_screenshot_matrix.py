@@ -26,7 +26,7 @@ css_files = [
 js_files = [
     "app.js", "features/modules.js", "features/wellness.js",
     "features/calendar.js", "features/system.js", "features/media.js",
-    "features/accessibility.js", "features/displays.js"
+    "features/accessibility.js", "features/displays.js", "features/workspace.js"
 ]
 
 with sync_playwright() as pw:
