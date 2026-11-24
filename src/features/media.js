@@ -78,11 +78,15 @@ async function refreshMediaDetails(force = false) {
     const snapshot = selected && selected !== active?.source
       ? await invoke('get_media_session_by_source', { source: selected }) : active;
     if (!panel.classList.contains('active') || picker.value !== selected) return;
-    renderMediaDetails(snapshot);
-    if (selected && !snapshot) {
+    if (selected && (!snapshot || snapshot.source !== selected)) {
+      mediaNeedsSelection = true;
+      renderSelectedPlayers(sessions, active?.source);
+      renderMediaDetails(null);
       document.querySelector('#media-player-status').textContent =
-        'Selected session disconnected. Refresh or choose another player.';
+        'Selected session disconnected. Choose a player explicitly.';
+      return;
     }
+    renderMediaDetails(snapshot);
     mediaDetailsLastAt = Date.now();
   } catch (error) {
     renderMediaDetails(null);
