@@ -70,6 +70,8 @@ async function refreshSystemDetails(force = false) {
   if (!panel?.classList.contains('active')) return;
   if (!force && Date.now() - systemDetailsLastFetch < 15000) return;
   systemDetailsPending = true;
+  document.querySelector('#system-disks').textContent = 'Reading storage counters…';
+  document.querySelector('#system-networks').textContent = 'Reading network counters…';
   try {
     renderSystemDetails(await invoke('get_system_details'));
     systemDetailsLastFetch = Date.now();
@@ -78,13 +80,57 @@ async function refreshSystemDetails(force = false) {
     document.querySelector('#system-networks').textContent = 'Network snapshot unavailable.';
     showError(error);
   } finally {
+    systemDetailsLastFetch = Date.now();
     systemDetailsPending = false;
   }
 }
+
+let deviceRequest = 0;
+async function readDeviceInfo() {
+  const request = ++deviceRequest;
+  const status = $('#device-status'), list = $('#device-results');
+  const read = $('#device-read'), clear = $('#device-clear');
+  list.replaceChildren();
+  if (!nativeInvoke) {
+    status.textContent = 'Device information requires the installed Windows app.';
+    return;
+  }
+  status.textContent = 'Reading local device information…';
+  read.disabled = true; clear.disabled = false;
+  try {
+    const result = await invoke('get_device_diagnostics');
+    if (request !== deviceRequest) return;
+    const fields = [['Operating system',result.os_name],['OS version',result.os_version],
+      ['Kernel version',result.kernel_version],['App architecture',result.architecture],
+      ['Available logical CPUs',result.logical_cpus]];
+    for (const [label,value] of fields) {
+      const line = node('div','module-item');
+      const info = node('div','module-info');
+      info.append(node('b','',label),node('small','',value == null || value === '' ? 'Unavailable' : String(value)));
+      line.append(info); list.append(line);
+    }
+    status.textContent = 'Local snapshot complete. Unavailable fields are not estimated.';
+  } catch (error) {
+    if (request === deviceRequest) status.textContent = 'Device snapshot failed or unavailable.';
+  } finally {
+    if (request === deviceRequest) read.disabled = false;
+  }
+}
+function clearDeviceInfo() {
+  deviceRequest++;
+  $('#device-results').replaceChildren();
+  $('#device-status').textContent = 'Device information cleared.';
+  $('#device-read').disabled = false;
+  $('#device-clear').disabled = true;
+  $('#device-read').focus();
+}
+
 function initSystemDetails() {
   if (systemDetailsInitialized) return;
   systemDetailsInitialized = true;
   renderSystemDetails(null);
+  $('#device-read').addEventListener('click', () => void readDeviceInfo());
+  $('#device-clear').addEventListener('click', clearDeviceInfo);
   document.querySelector('#system-refresh').addEventListener('click', () => {
     void refreshSystemDetails(true);
   });

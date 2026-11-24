@@ -36,6 +36,7 @@ with sync_playwright() as pw:
     page.add_style_tag(content=(UI / "styles/base.css").read_text())
     page.add_script_tag(content=(UI / "app.js").read_text())
     page.add_script_tag(content=(UI / "features/modules.js").read_text())
+    page.add_script_tag(content=(UI / "features/system.js").read_text())
     page.locator("#expanded").wait_for(state="visible")
     page.get_by_role("button", name="Habits", exact=True).click()
     page.locator("#habit-title").fill("Read 20 minutes")
@@ -48,6 +49,28 @@ with sync_playwright() as pw:
     page.locator("#quicklink-url").fill("https://example.com/help")
     page.get_by_role("button", name="Pin link").click()
     page.get_by_role("button", name="Open WFS docs").wait_for()
+    # Shelf keeps only selected metadata, deduplicates and never mutates files.
+    shelf = page.locator("#shelf-input")
+    shelf.set_input_files([
+        {"name": "a.txt", "mimeType": "text/plain", "buffer": b"abc"},
+        {"name": "b.txt", "mimeType": "text/plain", "buffer": b"defg"},
+    ])
+    assert page.locator("#shelf-count").inner_text() == "2 / 32"
+    assert page.locator("#shelf-list").get_by_text("a.txt", exact=True).is_visible()
+    assert page.evaluate("shelfEntries.every(x => Object.keys(x).sort().join(',') === 'modified,name,size')")
+    assert page.evaluate("shelfAdd([], [{name:'a',size:1,lastModified:0},{name:'a',size:1,lastModified:0}]).entries.length") == 1
+    assert page.evaluate("shelfAdd([], Array.from({length:40},(_,i)=>({name:'f'+i,size:1,lastModified:0}))).entries.length") == 32
+    page.get_by_role("button", name="Remove from Shelf: a.txt").click()
+    assert page.locator("#shelf-count").inner_text() == "1 / 32"
+    assert page.get_by_role("button", name="Remove from Shelf: b.txt").evaluate("(el) => el === document.activeElement")
+    page.get_by_role("button", name="Clear Shelf").click()
+    assert page.locator("#shelf-count").inner_text() == "0 / 32"
+    assert shelf.evaluate("(el) => el === document.activeElement")
+    page.get_by_role("button", name="System", exact=True).click()
+    page.get_by_role("button", name="Read device info").click()
+    assert "requires the installed Windows app" in page.locator("#device-status").inner_text()
+    assert page.locator("#device-results").inner_text() == ""
+    page.get_by_role("button", name="Dock", exact=True).click()
     # Unsafe schemes cannot be added through the preview backend.
     bad = page.evaluate("""async () => {
       try { await previewInvoke('add_quick_link', {label:'bad', url:'javascript:alert(1)'}); return 'accepted'; }

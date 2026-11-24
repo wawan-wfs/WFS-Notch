@@ -1,5 +1,14 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## 0.45.0 — Phase 44 candidate (not released)
+
+- Local session-only metadata File Shelf inside Dock: 32 entries, deduplication, remove/clear, keyboard focus.
+- Explicit local device diagnostics: OS version, kernel, app architecture, available logical CPUs; no identifiers.
+- Theme-aware contrast tokens for five audited small-text styles, named Notes fields, empty Flashcards selector and reset on source deletion.
+- Browser regression additions for Shelf and preview device status; static checks for contrast and native command wiring.
+- Native Windows, full CI and comparative parity remain unverified for this candidate.
+
+
 - One-time moves can preserve the local start hour of saved IANA or explicit floating series without re-expanding the original recurrence.
 - Review the source timezone and exact UTC instants before moving. Nonexistent target times leave their saved occurrence untouched. Ambiguous starts use the earlier instant, and elapsed duration is unchanged.
 - Re-import and flattened export do not regenerate cancelled occurrences. Unsupported ICS range operations, overridden series and unzoned floating series are still refused.

@@ -2465,6 +2465,7 @@ fn main() {
             restore_backup,
             get_system_snapshot,
             system_details::get_system_details,
+            system_details::get_device_diagnostics,
             media_sessions::get_active_media_session,
             media_sessions::get_media_session_by_source,
             media_sessions::list_media_sessions,

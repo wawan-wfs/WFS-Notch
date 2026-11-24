@@ -131,7 +131,7 @@ const moduleKeywords = {
   calendar: 'events appointments ics', timer: 'pomodoro focus session',
   system: 'cpu ram disk network telemetry', health: 'water wellness break',
   day: 'schedule today', countdown: 'timer alarm', weather: 'temperature forecast',
-  flashcards: 'study cards', habits: 'streak checklist', dock: 'bookmarks launcher links',
+  flashcards: 'study cards', habits: 'streak checklist', dock: 'bookmarks launcher links shelf files',
   media: 'music audio player volume', tools: 'stopwatch calculator password',
   settings: 'preferences appearance contrast density display backups',
 };
@@ -232,6 +232,70 @@ function handlePaletteKey(event) {
     options[0]?.click();
   }
 }
+
+function shelfRecord(file){
+  if (!file || typeof file.name !== 'string' || !file.name.length || file.name.length > 512 ||
+      !Number.isSafeInteger(file.size) || file.size < 0 ||
+      !Number.isSafeInteger(file.lastModified) || file.lastModified < 0) return null;
+  // Do not retain File objects, paths, MIME guesses, contents or object URLs.
+  return {name:file.name,size:file.size,modified:file.lastModified};
+}
+function shelfAdd(existing, selected) {
+  const entries = existing.slice(0, 32);
+  const keys = new Set(entries.map(item => JSON.stringify([item.name,item.size,item.modified])));
+  let added = 0, skipped = 0;
+  for (const file of selected) {
+    const item = shelfRecord(file);
+    if (!item || entries.length >= 32) { skipped++; continue; }
+    const key = JSON.stringify([item.name,item.size,item.modified]);
+    if (keys.has(key)) { skipped++; continue; }
+    keys.add(key); entries.push(item); added++;
+  }
+  return {entries,added,skipped};
+}
+let shelfEntries = [];
+function renderShelf(focusIndex = null) {
+  const list = $('#shelf-list');
+  list.replaceChildren();
+  $('#shelf-count').textContent = shelfEntries.length + ' / 32';
+  $('#shelf-clear').disabled = !shelfEntries.length;
+  if (!shelfEntries.length) list.append(node('div','empty','Shelf is empty.'));
+  shelfEntries.forEach((item,index) => {
+    const line = node('div','module-item');
+    const info = node('div','module-info');
+    info.append(node('b','',item.name),node('small','',item.size.toLocaleString() + ' bytes'));
+    const remove = node('button','remove-task','×');
+    remove.type = 'button';
+    remove.setAttribute('aria-label','Remove from Shelf: ' + item.name);
+    remove.addEventListener('click', () => {
+      shelfEntries.splice(index,1);
+      $('#shelf-status').textContent = 'Removed one entry.';
+      renderShelf(index);
+    });
+    line.append(info,remove); list.append(line);
+  });
+  if (focusIndex !== null) {
+    const buttons = list.querySelectorAll('button');
+    (buttons[Math.min(focusIndex,buttons.length-1)] || $('#shelf-input')).focus();
+  }
+}
+function initShelf() {
+  const input = $('#shelf-input');
+  input.addEventListener('change', () => {
+    const result = shelfAdd(shelfEntries,input.files || []);
+    shelfEntries = result.entries;
+    input.value = '';
+    $('#shelf-status').textContent = result.added + ' added; ' + result.skipped + ' skipped (duplicate, invalid or capacity).';
+    renderShelf();
+  });
+  $('#shelf-clear').addEventListener('click', () => {
+    shelfEntries = [];
+    $('#shelf-status').textContent = 'Shelf cleared. Original files unchanged.';
+    renderShelf(); input.focus();
+  });
+  renderShelf();
+}
+
 function initExtras() {
   if (extrasInitialized) return;
   extrasInitialized = true;
@@ -327,6 +391,7 @@ function initExtras() {
   setInterval(renderStopwatch, 100);
   renderStopwatch();
   renderExtras();
+  initShelf();
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initExtras, { once: true });
 else initExtras();

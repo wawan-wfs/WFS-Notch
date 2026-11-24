@@ -50,3 +50,12 @@ assert {'import_ics', 'export_ics', 'get_active_media_session', 'get_display_opt
 assert 'notifications::start_scheduler(app.handle().clone())' in rust
 assert 'calendar_ics::import_ics' in rust and 'calendar_ics::export_ics' in rust
 print('PASS: static audit |', len(ids), 'unique element IDs |', len(frontend_calls), 'bound frontend commands |', len(commands), 'Rust commands | JSON/SVG/icons checked')
+
+# Phase 44: audited small-text colors must inherit the theme token.
+base_css = (root / 'src/styles/base.css').read_text()
+for selector in ('.footnote', '.todo-item.done .title', '.note-card small', '.note-foot', 'footer'):
+    rules = re.findall(re.escape(selector) + r'\s*\{([^}]+)\}', base_css)
+    assert any('color:var(--muted)' in rule for rule in rules), selector
+assert 'get_device_diagnostics' in commands and 'system_details::get_device_diagnostics' in rust
+assert 'type="file" multiple' in html
+print('PASS: Phase 44 contrast tokens, local Shelf control and device command wiring')

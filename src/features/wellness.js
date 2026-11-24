@@ -6,7 +6,7 @@ let countdownPresetSignature = '';
 let flashcardNoteId = '';
 let flashcardIndex = 0;
 let flashcardShowingAnswer = false;
-let flashcardSignature = '';
+let flashcardSignature = null;
 let weatherInFlight = false;
 let lastDayRefresh = 0;
 const weatherGroups = new Map([
@@ -107,12 +107,22 @@ function renderFlashcards() {
   if (signature !== flashcardSignature) {
     flashcardSignature = signature;
     select.replaceChildren();
+    select.disabled = !data.notes.length;
+    if (!data.notes.length) {
+      const empty = document.createElement('option');
+      empty.value = ''; empty.textContent = 'No notes available';
+      select.append(empty);
+    }
     for (const note of data.notes) {
       const option = document.createElement('option');
       option.value = note.id; option.textContent = note.title || 'Untitled';
       select.append(option);
     }
-    if (!data.notes.some(n=>n.id===flashcardNoteId)) flashcardNoteId = data.notes[0]?.id || '';
+    if (!data.notes.some(n=>n.id===flashcardNoteId)) {
+      flashcardNoteId = data.notes[0]?.id || '';
+      flashcardIndex = 0;
+      flashcardShowingAnswer = false;
+    }
     select.value = flashcardNoteId;
   }
   const cards = cardsFromNote(flashcardNoteId);

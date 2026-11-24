@@ -78,3 +78,29 @@ mod tests {
         assert_eq!(used_bytes(0, 0), 0);
     }
 }
+
+#[derive(Debug, Serialize)]
+pub struct DeviceDiagnostics {
+    os_name: Option<String>,
+    os_version: Option<String>,
+    kernel_version: Option<String>,
+    architecture: &'static str,
+    logical_cpus: Option<usize>,
+}
+
+/// Explicitly requested, local-only snapshot. No host name, serial, user or IP.
+#[tauri::command]
+pub fn get_device_diagnostics() -> Result<DeviceDiagnostics, String> {
+    if !cfg!(windows) {
+        return Err("Device diagnostics are available on Windows only".into());
+    }
+    Ok(DeviceDiagnostics {
+        os_name: sysinfo::System::name(),
+        os_version: sysinfo::System::os_version(),
+        kernel_version: sysinfo::System::kernel_version(),
+        architecture: std::env::consts::ARCH,
+        logical_cpus: std::thread::available_parallelism()
+            .ok()
+            .map(std::num::NonZeroUsize::get),
+    })
+}

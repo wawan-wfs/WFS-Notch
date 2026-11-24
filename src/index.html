@@ -94,7 +94,7 @@
         <section class="panel" id="panel-notes">
           <div class="section-heading"><div><h2>Notes</h2><p>Capture ideas as they happen.</p></div><button id="note-new" class="primary">+ New note</button></div>
           <div class="note-search-row"><input id="note-search" type="search" autocomplete="off" placeholder="Search notes, including tags..." aria-label="Search notes"><select id="note-tag-filter" aria-label="Filter notes by tag"><option value="">All tags</option></select></div>
-          <div class="note-layout"><div id="note-list" class="note-list"></div><div class="note-editor"><input id="note-title" placeholder="Note title" maxlength="200"><label class="note-tags-label" for="note-tags">Tags · comma-separated, max 8</label><input id="note-tags" placeholder="e.g. work, idea, urgent" aria-label="Note tags, comma-separated" maxlength="200" spellcheck="false"><textarea id="note-body" placeholder="Start writing your thoughts..." maxlength="50000"></textarea><div id="note-conflict" class="note-conflict" role="alert" hidden>
+          <div class="note-layout"><div id="note-list" class="note-list"></div><div class="note-editor"><input id="note-title" aria-label="Note title" placeholder="Note title" maxlength="200"><label class="note-tags-label" for="note-tags">Tags · comma-separated, max 8</label><input id="note-tags" placeholder="e.g. work, idea, urgent" aria-label="Note tags, comma-separated" maxlength="200" spellcheck="false"><textarea id="note-body" aria-label="Note body" placeholder="Start writing your thoughts..." maxlength="50000"></textarea><div id="note-conflict" class="note-conflict" role="alert" hidden>
               <strong>Saved note changed elsewhere</strong>
               <p>Your unsaved draft is retained locally. Reload the latest saved note or save the draft as a separate note. No automatic overwrite is allowed.</p>
               <div class="note-actions"><button id="note-conflict-reload" class="secondary" type="button">Discard draft &amp; reload</button><button id="note-conflict-copy" class="primary" type="button">Save draft as new note</button></div>
@@ -183,6 +183,7 @@
             <section><h3>Storage volumes</h3><div id="system-disks" aria-live="polite">Read-only on Windows · no preview numbers</div></section>
             <section><h3>Network interfaces</h3><div id="system-networks" aria-live="polite">Read-only on Windows · no preview numbers</div></section>
           </div>
+          <section class="phase44-card" aria-labelledby="device-heading"><div class="section-heading"><div><h3 id="device-heading">Device diagnostics</h3><p>On-demand read-only OS version, architecture and available logical CPU count. No identifiers or network requests.</p></div></div><div class="tool-actions"><button id="device-read" class="secondary" type="button">Read device info</button><button id="device-clear" class="secondary" type="button" disabled>Clear device info</button></div><p id="device-status" class="event-hint" role="status">Not requested.</p><div id="device-results" class="module-list"></div></section>
           <p class="event-hint">Disk and network totals are local OS counters, not speed tests. No Wi-Fi scanning, admin privileges or uploads.</p>
           <p class="event-hint">Refreshes every 4 seconds while this panel is open. Does not track running apps, upload telemetry, or run a background service.</p>
         </section>
@@ -251,7 +252,7 @@
         </section>
         <section class="panel" id="panel-flashcards">
           <div class="section-heading"><div><h2>Notes flashcards</h2><p>Write lines like “question :: answer” in Notes, then practice here.</p></div><span class="section-pill" id="flashcards-count">0 CARDS</span></div>
-          <select id="flashcards-note" class="flashcards-select" aria-label="Select flashcard note"></select>
+          <select id="flashcards-note" class="flashcards-select" aria-label="Select flashcard note" disabled><option value="">No notes available</option></select>
           <div class="flashcard-face" id="flashcard-face">Select a note with flashcard lines.</div>
           <div class="tool-actions"><button class="primary" id="flashcard-flip" type="button">Show answer</button><button class="secondary" id="flashcard-next" type="button">Next card</button></div>
           <p id="flashcard-position" class="event-hint">Study locally; no account or AI service required.</p>
@@ -278,6 +279,14 @@
           </form>
           <div class="module-list" id="quicklink-list"></div>
           <p class="event-hint">Native buttons require Windows; pinned links open in your default browser. URLs must be http(s), without embedded passwords.</p>
+          <section class="phase44-card" aria-labelledby="shelf-heading">
+            <div class="section-heading"><div><h3 id="shelf-heading">File Shelf</h3><p>Review selected file metadata locally. No contents, paths or uploads; entries disappear when the app reloads.</p></div><span class="section-pill" id="shelf-count">0 / 32</span></div>
+            <label for="shelf-input" class="event-hint">Choose files to add (max 32)</label>
+            <input id="shelf-input" class="shelf-input" type="file" multiple>
+            <div class="tool-actions"><button id="shelf-clear" class="secondary" type="button" disabled>Clear Shelf</button></div>
+            <p id="shelf-status" class="event-hint" role="status" aria-live="polite">No files selected.</p>
+            <div id="shelf-list" class="module-list"></div>
+          </section>
         </section>
         <section class="panel" id="panel-media">
           <div class="section-heading"><div><h2>Media remote</h2><p>Windows global media and volume controls.</p></div><span class="section-pill">NATIVE KEYS</span></div>
