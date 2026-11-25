@@ -36,7 +36,6 @@ impl ReminderRetry {
     }
 }
 
-
 const ACTIVITY_LIMIT: usize = 200;
 const ACTIVITY_RETENTION_MS: u64 = 30 * 24 * 60 * 60 * 1_000;
 
@@ -501,7 +500,9 @@ where
     }
     // Success already has a durably committed reservation. Removing a stale
     // retry marker is housekeeping, not a reason to repeat the OS send.
-    if guard.data.settings.activity_history_limit == 0 && !guard.data.reminder_retries.contains_key(&key) {
+    if guard.data.settings.activity_history_limit == 0
+        && !guard.data.reminder_retries.contains_key(&key)
+    {
         return Ok(true);
     }
     let attempt = guard.data.reminder_retries.get(&key).map_or(1, |previous| {
@@ -544,14 +545,9 @@ where
     let key = task_delivery_key(&todo).ok_or("Task due date was cleared")?;
     let expires_at = u128::from(task_alert_at(&todo).ok_or("Task due date was cleared")?)
         .saturating_add(LEDGER_RETENTION_MS);
-    reserve_and_send(
-        &mut guard,
-        key,
-        expires_at,
-        now,
-        ActivityKind::Task,
-        || sender(&todo, &settings),
-    )
+    reserve_and_send(&mut guard, key, expires_at, now, ActivityKind::Task, || {
+        sender(&todo, &settings)
+    })
 }
 
 fn deliver_task_by_id(app: &AppHandle, store: &Mutex<Store>, id: &str) -> Result<bool, String> {

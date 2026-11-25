@@ -3223,7 +3223,9 @@ mod tests {
         let mut state = AppData::default();
         state.settings.activity_history_limit = 100;
         state.settings.accent = "#222222".into();
-        state.reminder_deliveries.insert("opaque".into(), now_ms() + 60_000);
+        state
+            .reminder_deliveries
+            .insert("opaque".into(), now_ms() + 60_000);
         let mut encoded = serde_json::to_value(&state).unwrap();
         encoded["notification_activity"] = serde_json::json!([{
             "at_ms": now_ms(), "kind": "task", "outcome": "enqueue_accepted", "attempt": 1
@@ -3234,7 +3236,10 @@ mod tests {
         assert_eq!(recovered.data.settings.activity_history_limit, 0);
         assert!(recovered.data.notification_activity.is_empty());
         assert_eq!(recovered.data.settings.accent, "#222222");
-        assert_eq!(recovered.data.reminder_deliveries, state.reminder_deliveries);
+        assert_eq!(
+            recovered.data.reminder_deliveries,
+            state.reminder_deliveries
+        );
         assert_eq!(fs::read(&backup).unwrap(), bytes);
         let reopened = Store::open(path.clone()).unwrap();
         assert_eq!(reopened.data.settings.activity_history_limit, 0);
