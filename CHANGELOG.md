@@ -5,7 +5,7 @@
 - Independent module-specific layout adjustments and contextual focus/related-workspace links for all 16 existing modules.
 - Shelf extension-only category filter applied to display, totals, copy and bulk metadata removal; no original file operations.
 - Audio inventory filtering without new native calls, activity outcome totals, automatic recovery resets history opt-in and journal; newly created manual backups omit notification activity while preserving reminder reservation/retry ledger. Existing backups remain unchanged.
-- 182 isolated Chromium assertions passed across two viewport profiles. Full-app and Windows acceptance remain open.
+- 182 isolated Chromium assertions passed across two viewport profiles, 46 baseline Phase 47 Chromium assertions re-run, and 78 JS fixture assertions passed. Exact SHA checks and build source manifest added to manual CI. Full-app and Windows acceptance remain open.
 
 ## Phase 47 — v0.45.0 acceptance candidate
 

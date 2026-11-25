@@ -50,6 +50,8 @@ function phase47RenderPolicy() {
     if (typeof activityRequest!=='undefined') {
       activityRequest++; activityRows=[];
       $('#activity-list').replaceChildren();
+      const summary=$('#phase48-activity-summary');
+      if(summary)summary.textContent='No activity snapshot available.';
       $('#activity-read').disabled=false;
       $('#activity-clear').disabled=true;
       $('#activity-status').textContent='Read activity to refresh the current journal.';

@@ -19,6 +19,11 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+      - name: Verify exact selected commit
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git rev-parse HEAD
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -43,6 +48,8 @@ jobs:
         run: node --check src/features/phase48.js
       - name: Phase 48 isolated Chromium regression
         run: python tests/browser_phase48.py
+      - name: Phase 48 integration fixture regression
+        run: node tests/phase48_integration.test.cjs
       - name: Phase 47 JavaScript syntax
         run: node --check src/features/phase47.js
       - name: Phase 47 isolated Chromium regression
@@ -135,6 +142,11 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+      - name: Verify exact selected commit
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git rev-parse HEAD
       - name: Set up Rust MSVC (x64)
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -167,6 +179,11 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+      - name: Verify exact selected commit
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git rev-parse HEAD
       - name: Set up Rust MSVC (x64)
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -194,6 +211,9 @@ jobs:
           $installers = @(Get-ChildItem $directory -Filter '*.exe' -File -ErrorAction Stop)
           if ($installers.Count -lt 1) { throw 'No NSIS installer was produced' }
           New-Item -ItemType Directory -Force -Path 'build-evidence' | Out-Null
+          $commit = (git rev-parse HEAD).Trim()
+          if ($commit -ne $env:GITHUB_SHA) { throw 'Build source commit does not match selected workflow commit' }
+          @("commit=$commit", "run_id=$env:GITHUB_RUN_ID", "run_attempt=$env:GITHUB_RUN_ATTEMPT", (rustc --version), (cargo --version)) | Set-Content 'build-evidence/BUILD_SOURCE.txt'
           $portable = Get-Item 'src-tauri/target/release/wfs-notch.exe' -ErrorAction Stop
           foreach ($file in ($installers + @($portable))) {
             $hash = Get-FileHash -Path $file.FullName -Algorithm SHA256
@@ -204,7 +224,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: WFSNotch-Windows-SHA256
-          path: build-evidence/SHA256SUMS.txt
+          path: |
+            build-evidence/SHA256SUMS.txt
+            build-evidence/BUILD_SOURCE.txt
           retention-days: 30
           if-no-files-found: error
       - name: Upload unsigned portable Windows executable
