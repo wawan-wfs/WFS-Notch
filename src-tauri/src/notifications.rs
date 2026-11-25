@@ -132,9 +132,15 @@ pub fn get_notification_activity(
     let guard = store
         .lock()
         .map_err(|_| "Storage lock unavailable".to_owned())?;
-    let mut snapshot = guard.data.clone();
-    apply_activity_policy(&mut snapshot, now_ms());
-    let mut rows = snapshot.notification_activity;
+    let limit = guard.data.settings.activity_history_limit;
+    if !matches!(limit, 25 | 100 | 200) {
+        return Ok(Vec::new());
+    }
+    let mut rows = guard.data.notification_activity.clone();
+    drop(guard);
+    normalize_activity(&mut rows, now_ms());
+    let excess = rows.len().saturating_sub(usize::from(limit));
+    rows.drain(..excess);
     rows.reverse();
     Ok(rows)
 }

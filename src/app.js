@@ -686,6 +686,7 @@ async function switchTab(tab) {
   $$('.panel').forEach(panel => panel.classList.toggle('active', panel.id === 'panel-' + tab));
   if (typeof wfsSyncNavigation === 'function') wfsSyncNavigation();
   if (typeof phase47SyncNav === 'function') phase47SyncNav();
+  if (tab !== 'home' && typeof wfs50ClearSearch === 'function' && !wfs50SearchNavigating) wfs50ClearSearch();
   if (tab === 'settings') void refreshBackups();
   if (tab === 'system') void refreshTelemetry();
   return true;
@@ -1253,6 +1254,8 @@ function render() {
   if (typeof renderParity === 'function') renderParity();
   if (typeof workspaceRender === 'function') workspaceRender();
   if (typeof phase47RenderPolicy === 'function') phase47RenderPolicy();
+  if (typeof wfs50RenderSearch === 'function') wfs50RenderSearch();
+  if (typeof wfs50RenderGaps === 'function') wfs50RenderGaps();
 }
 
 async function saveRevisionNote(draft) {

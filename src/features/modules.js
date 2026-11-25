@@ -321,6 +321,7 @@ function renderShelf(focusIndex = null) {
   if(categories&&typeof plannerShelfCategories==='function'){const counts=plannerShelfCategories(shelfEntries);categories.textContent=counts.image+' images · '+counts.document+' documents · '+counts.media+' media · '+counts.other+' other (all entries)';}
   $('#shelf-remove-shown').disabled = !visible.length;
   $('#shelf-copy-names').disabled = !visible.length;
+  if($('#phase50-shelf-copy'))$('#phase50-shelf-copy').disabled=!visible.length;
   if (!visible.length) list.append(node('div','empty',shelfEntries.length ? 'No matching files.' : 'Shelf is empty.'));
   visible.forEach(({item,index},position) => {
     const line = node('div','module-item');

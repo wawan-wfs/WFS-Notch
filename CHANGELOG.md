@@ -1,5 +1,13 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Phase 50 — v0.45.0 candidate
+
+- Phase 49 manual CI run 45673734919: all three jobs passed, 122 Rust tests, full browser regression and 80 matrix screenshots; package verified separately.
+- Local record search across tasks, calendar, notes, habits and pinned links; opt-in note body search with no body output, no network or persistence.
+- Planner time-gap analysis with merged timed-event intervals and explicit excluded all-day/unknown-duration counts.
+- Copy visible Shelf metadata JSON with confirmation; audio snapshot status distinguishes partial/denied; media source duplicates fail closed; native activity reads clone only bounded journal instead of full state.
+- 29 focused model assertions passed; new candidate CI and native physical acceptance pending.
+
 ## Phase 49 — v0.45.0 acceptance candidate
 
 - Apply every rustfmt diff from actual manual run 45644444109 (Phase 48 build, browser suite, 122 Rust tests and Clippy passed; formatting failed).

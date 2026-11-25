@@ -123,7 +123,7 @@ function updateInterpolatedProgress() {
 function renderSelectedPlayers(sessions, systemCurrentSource) {
   const picker = document.querySelector('#media-player-picker');
   const status = document.querySelector('#media-player-status');
-  const safe = Array.isArray(sessions) ? sessions.filter(item => typeof item.source === 'string' && item.source.length > 0) : [];
+  const safe = typeof wfs50MediaSessions === 'function' ? wfs50MediaSessions(sessions) : Array.isArray(sessions) ? sessions.filter(item => item && typeof item.source === 'string' && item.source.length > 0) : [];
   const previous = picker.value;
   if (previous && !safe.some(item => item.source === previous)) mediaNeedsSelection = true;
   mediaSessionChoices = safe;

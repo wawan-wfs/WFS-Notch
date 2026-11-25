@@ -168,7 +168,7 @@ async function readAudio(reader=nativeInvoke?()=>invoke('get_audio_inventory'):n
     if(ticket!==audioRequest)return;
     phase48AudioGroups=groups;
     if ($('#phase48-audio-filter') && typeof phase48AudioFilter === 'function') phase48RefreshAudioView(); else renderAudio(groups);
-    status.textContent='Snapshot complete. No device settings changed.';
+    status.textContent=typeof wfs50AudioStatus==='function'?wfs50AudioStatus(groups):'Snapshot complete. No device settings changed.';
   } catch {if(ticket===audioRequest)status.textContent='Audio inventory unavailable or timed out. Retry.';}
   finally {if(ticket===audioRequest)$('#audio-read').disabled=false;}
 }
