@@ -1,0 +1,14 @@
+/* Local week planner, no network or new data persistence. */
+.planner-toolbar,.planner-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.planner-toolbar input{min-width:0;max-width:100%;color-scheme:dark}
+.planner-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.planner-day{display:grid;gap:4px;min-width:0;padding:7px 2px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);text-align:center}
+.planner-day[aria-pressed=true]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.planner-day small{font-size:10px;color:var(--muted);overflow-wrap:anywhere}.planner-day b{font-size:17px;font-variant-numeric:tabular-nums}
+.planner-row{display:grid;grid-template-columns:minmax(50px,auto) minmax(0,1fr) minmax(0,auto);align-items:center;gap:7px;padding:8px 0;border-top:1px solid var(--line);font-size:12px}
+.planner-row b{overflow-wrap:anywhere}.planner-row small,.planner-time{color:var(--muted);font-size:10px}
+.planner-date-filter{display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin:8px 0}
+.planner-date-filter label{display:grid;gap:4px;font-size:11px;color:var(--muted)}
+.planner-date-filter input{padding:7px;color-scheme:dark}
+@media(max-width:560px){.planner-week{grid-template-columns:repeat(4,minmax(0,1fr))}.planner-row{grid-template-columns:minmax(50px,auto) minmax(0,1fr)}.planner-row small{grid-column:2}}
+@media(forced-colors:active){.planner-day[aria-pressed=true]{outline:2px solid Highlight}.planner-day{border:1px solid ButtonText}}

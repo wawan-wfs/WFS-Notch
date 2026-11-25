@@ -56,9 +56,11 @@ function normalizeAudio(raw) {
 }
 
 let workspaceReady=false, workspaceLastMinute=-1, activityRows=[], activityRequest=0, audioRequest=0;
+let activitySnapshotAvailable=false;
 function workspaceRender() {
   if (!workspaceReady) return;
   if (typeof phase47RenderAgenda === 'function') phase47RenderAgenda();
+  if (typeof plannerRender === 'function') plannerRender();
   if (typeof appDataLoadStatus==='string'&&appDataLoadStatus!=='ready') {
     for (const id of ['workspace-overdue','workspace-today','workspace-events']) $('#'+id).textContent='—';
     $('#workspace-summary').textContent=appDataLoadStatus==='loading'?'Loading local planning state…':'Local data could not be loaded. Reopen the application or complete a successful update before relying on this summary.';
@@ -74,17 +76,22 @@ function workspaceRender() {
   $('#workspace-summary').textContent=overdue?'Review overdue tasks first.':'No overdue tasks. Review today’s plan.';
 }
 function workspaceTasks(items,now=Date.now()) {
-  const result=items.filter(item=>workspaceTaskMatch(item,$('#workspace-task-filter').value,$('#workspace-task-search').value,now));
+  const date=$('#phase49-task-date')?.value;
+  const result=items.filter(item=>workspaceTaskMatch(item,$('#workspace-task-filter').value,$('#workspace-task-search').value,now)&&(!date||typeof plannerTaskOnDate!=='function'||plannerTaskOnDate(item,date)));
   $('#workspace-task-count').textContent=result.length+' of '+items.length+' shown';
   return result;
 }
 function workspaceEvents(items,now=Date.now()) {
-  const result=items.filter(item=>workspaceEventMatch(item,$('#workspace-event-filter').value,$('#workspace-event-search').value,now));
+  const date=$('#phase49-event-date')?.value;
+  const result=items.filter(item=>workspaceEventMatch(item,$('#workspace-event-filter').value,$('#workspace-event-search').value,now)&&(!date||typeof plannerEventOnDate!=='function'||plannerEventOnDate(item,date)));
   $('#workspace-event-count').textContent=result.length+' of '+items.length+' shown';
   return result;
 }
 function renderActivity() {
-  const rows=activityRows.filter(row=>($('#activity-kind').value==='all'||row.kind===$('#activity-kind').value)&&
+  if(!activitySnapshotAvailable)return;
+  const windowMode=$('#phase49-activity-window')?.value||'all';
+  const source=typeof plannerActivityWindow==='function'?plannerActivityWindow(activityRows,windowMode,Date.now()):activityRows;
+  const rows=source.filter(row=>($('#activity-kind').value==='all'||row.kind===$('#activity-kind').value)&&
     ($('#activity-outcome').value==='all'||row.outcome===$('#activity-outcome').value));
   const list=$('#activity-list');list.replaceChildren();
   const summary=$('#phase48-activity-summary');
@@ -99,14 +106,14 @@ function renderActivity() {
 }
 async function readActivity(reader=nativeInvoke?()=>invoke('get_notification_activity'):null) {
   const ticket=++activityRequest, status=$('#activity-status');
-  activityRows=[];$('#activity-list').replaceChildren();$('#activity-clear').disabled=true;
+  activityRows=[];activitySnapshotAvailable=false;$('#activity-list').replaceChildren();$('#activity-clear').disabled=true;
   const summary=$('#phase48-activity-summary');if(summary)summary.textContent='No activity snapshot available.';
   if (!reader) {status.textContent='Requires the installed Windows app.';return;}
   $('#activity-read').disabled=true; status.textContent='Reading local activity…';
   try {
     const rows=normalizeActivity(await deviceDeadline(reader,10000));
     if(ticket!==activityRequest)return;
-    activityRows=rows;renderActivity();$('#activity-clear').disabled=false;
+    activityRows=rows;activitySnapshotAvailable=true;renderActivity();$('#activity-clear').disabled=false;
     status.textContent=rows.length+' local entries. Accepted means queued, not visibly delivered.';
   } catch {if(ticket===activityRequest)status.textContent='Activity unavailable or timed out. Retry.';}
   finally {if(ticket===activityRequest)$('#activity-read').disabled=false;}
@@ -119,7 +126,7 @@ async function clearActivity(clearer=nativeInvoke?()=>invoke('clear_notification
     // Do not apply a UI deadline to a mutation that may still commit later.
     if(await clearer()!==true)throw Error('Not cleared');
     if(ticket!==activityRequest)return;
-    activityRows=[];renderActivity();$('#activity-status').textContent='History cleared. Reminder reservations unchanged.';
+    activityRows=[];activitySnapshotAvailable=true;renderActivity();$('#activity-status').textContent='History cleared. Reminder reservations unchanged.';
   } catch {if(ticket===activityRequest){$('#activity-status').textContent='Clear failed. Existing history may remain.';$('#activity-clear').disabled=false;}}
   finally {if(ticket===activityRequest)$('#activity-read').disabled=false;}
 }
@@ -128,7 +135,8 @@ function phase48RefreshAudioView() {
   const control=$('#phase48-audio-filter'), summary=$('#phase48-audio-summary');
   if (!control || typeof phase48AudioFilter !== 'function') return;
   if (!phase48AudioGroups.length) { if(summary)summary.textContent='No snapshot available.'; return; }
-  const filtered=phase48AudioFilter(phase48AudioGroups,control.value);
+  let filtered=phase48AudioFilter(phase48AudioGroups,control.value);
+  if(typeof plannerAudioSearch==='function')filtered=plannerAudioSearch(filtered,$('#phase49-audio-search')?.value);
   if(summary)summary.textContent=filtered.reduce((n,g)=>n+g.endpoints.length,0)+' shown / '+phase48AudioGroups.reduce((n,g)=>n+g.endpoints.length,0)+' returned';
   renderAudio(filtered);
 }
@@ -177,8 +185,8 @@ function initWorkspace(){
   for(const button of $$('[data-workspace-go]'))button.addEventListener('click',async()=>{
     const tab=button.dataset.workspaceGo;
     if(!await switchTab(tab))return;
-    if(tab==='todos'&&button.dataset.workspaceFilter){$('#workspace-task-filter').value=button.dataset.workspaceFilter;$('#workspace-task-search').value='';renderTodos();}
-    if(tab==='calendar'&&button.dataset.workspaceFilter){$('#workspace-event-filter').value=button.dataset.workspaceFilter;$('#workspace-event-search').value='';renderCalendar();}
+    if(tab==='todos'&&button.dataset.workspaceFilter){$('#workspace-task-filter').value=button.dataset.workspaceFilter;$('#workspace-task-search').value='';if($('#phase49-task-date'))$('#phase49-task-date').value='';renderTodos();}
+    if(tab==='calendar'&&button.dataset.workspaceFilter){$('#workspace-event-filter').value=button.dataset.workspaceFilter;$('#workspace-event-search').value='';if($('#phase49-event-date'))$('#phase49-event-date').value='';renderCalendar();}
     $$('.tab').find(b=>b.dataset.tab===tab)?.focus();
   });
   $('#activity-read').addEventListener('click',()=>void readActivity());

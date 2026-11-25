@@ -44,6 +44,12 @@ jobs:
         run: node tests/shelf_model.test.cjs
       - name: Phase 45 state, storage failure and IPC fixtures
         run: node tests/phase45_state.test.cjs
+      - name: Phase 49 JavaScript syntax
+        run: node --check src/features/phase49.js
+      - name: Phase 49 planner model regression
+        run: node tests/phase49_planner.test.cjs
+      - name: Phase 49 browser planner integration
+        run: python tests/browser_phase49.py
       - name: Phase 48 JavaScript syntax
         run: node --check src/features/phase48.js
       - name: Phase 48 isolated Chromium regression

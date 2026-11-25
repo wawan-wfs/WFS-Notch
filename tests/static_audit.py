@@ -9,7 +9,7 @@ from html.parser import HTMLParser
 root = Path(__file__).resolve().parents[1]
 app = root
 html = (app / 'src/index.html').read_text()
-js = '\n'.join((app / 'src' / filename).read_text() for filename in ('app.js', 'features/modules.js', 'features/wellness.js', 'features/calendar.js', 'features/system.js', 'features/media.js', 'features/accessibility.js', 'features/displays.js', 'features/workspace.js', 'features/phase47.js', 'features/phase48.js'))
+js = '\n'.join((app / 'src' / filename).read_text() for filename in ('app.js', 'features/modules.js', 'features/wellness.js', 'features/calendar.js', 'features/system.js', 'features/media.js', 'features/accessibility.js', 'features/displays.js', 'features/workspace.js', 'features/phase47.js', 'features/phase48.js', 'features/phase49.js'))
 rust = (app / 'src-tauri/src/main.rs').read_text()
 all_rust = '\n'.join((app / 'src-tauri/src' / filename).read_text() for filename in ('main.rs', 'extra.rs', 'wellness.rs', 'calendar_ics.rs', 'system_details.rs', 'media_sessions.rs', 'display.rs', 'notifications.rs'))
 config = json.loads((app / 'src-tauri/tauri.conf.json').read_text())

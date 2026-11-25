@@ -1,5 +1,12 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Phase 49 — v0.45.0 acceptance candidate
+
+- Apply every rustfmt diff from actual manual run 45644444109 (Phase 48 build, browser suite, 122 Rust tests and Clippy passed; formatting failed).
+- Add local-date week planner with day selection, overlap detection for explicitly timed events, 12-item progressive display, and guarded navigation to date-filtered Tasks and Calendar. Existing daily dashboard retained.
+- Add notification age filter, prevent stale/unknown activity totals, audio snapshot search and Shelf category counts. No file writes or new network calls.
+- Model and browser regression entry points, updated screenshot matrix. Fresh CI on Phase 49 is required.
+
 ## Phase 48 — v0.45.0 acceptance candidate
 
 - Independent module-specific layout adjustments and contextual focus/related-workspace links for all 16 existing modules.

@@ -49,6 +49,7 @@ function phase47RenderPolicy() {
     // Invalidate previously requested reads; do not render old history after opt-out.
     if (typeof activityRequest!=='undefined') {
       activityRequest++; activityRows=[];
+      if(typeof activitySnapshotAvailable!=='undefined')activitySnapshotAvailable=false;
       $('#activity-list').replaceChildren();
       const summary=$('#phase48-activity-summary');
       if(summary)summary.textContent='No activity snapshot available.';

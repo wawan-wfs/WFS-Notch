@@ -317,6 +317,8 @@ function renderShelf(focusIndex = null) {
   $('#shelf-forget').disabled = !shelfRemember && !shelfStorageBlocked;
   $('#shelf-filter-count').textContent = visible.length + ' of ' + shelfEntries.length + ' shown';
   if (typeof phase47ShelfSummary === 'function') phase47ShelfSummary(visible);
+  const categories=$('#phase49-shelf-categories');
+  if(categories&&typeof plannerShelfCategories==='function'){const counts=plannerShelfCategories(shelfEntries);categories.textContent=counts.image+' images · '+counts.document+' documents · '+counts.media+' media · '+counts.other+' other (all entries)';}
   $('#shelf-remove-shown').disabled = !visible.length;
   $('#shelf-copy-names').disabled = !visible.length;
   if (!visible.length) list.append(node('div','empty',shelfEntries.length ? 'No matching files.' : 'Shelf is empty.'));

@@ -21,12 +21,12 @@ html = html.replace('src="assets/wfs-notch-mark.svg"',
                     'src="data:image/svg+xml;base64,' + logo + '"')
 css_files = [
     "styles/base.css", "styles/calendar.css", "styles/system.css",
-    "styles/media.css", "styles/refinements.css", "styles/displays.css", "styles/phase47.css", "styles/phase48.css"
+    "styles/media.css", "styles/refinements.css", "styles/displays.css", "styles/phase47.css", "styles/phase48.css", "styles/phase49.css"
 ]
 js_files = [
     "app.js", "features/modules.js", "features/wellness.js",
     "features/calendar.js", "features/system.js", "features/media.js",
-    "features/accessibility.js", "features/displays.js", "features/workspace.js", "features/phase47.js", "features/phase48.js"
+    "features/accessibility.js", "features/displays.js", "features/workspace.js", "features/phase47.js", "features/phase48.js", "features/phase49.js"
 ]
 
 with sync_playwright() as pw:
