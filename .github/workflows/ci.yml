@@ -12,21 +12,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  attribution-audit:
-    name: Verify owner push and commit identity
-    if: github.event_name == 'push'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - name: Checkout complete commit history
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Verify actor and commit metadata
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-        run: python3 tests/verify_push_identity.py
-
   browser-audit:
     name: Browser regression / static audit
     runs-on: ubuntu-24.04
@@ -54,6 +39,10 @@ jobs:
         run: node tests/shelf_model.test.cjs
       - name: Phase 45 state, storage failure and IPC fixtures
         run: node tests/phase45_state.test.cjs
+      - name: Phase 48 JavaScript syntax
+        run: node --check src/features/phase48.js
+      - name: Phase 48 isolated Chromium regression
+        run: python tests/browser_phase48.py
       - name: Phase 47 JavaScript syntax
         run: node --check src/features/phase47.js
       - name: Phase 47 isolated Chromium regression

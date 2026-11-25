@@ -1,5 +1,12 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Phase 48 — v0.45.0 acceptance candidate
+
+- Independent module-specific layout adjustments and contextual focus/related-workspace links for all 16 existing modules.
+- Shelf extension-only category filter applied to display, totals, copy and bulk metadata removal; no original file operations.
+- Audio inventory filtering without new native calls, activity outcome totals, automatic recovery resets history opt-in and journal; newly created manual backups omit notification activity while preserving reminder reservation/retry ledger. Existing backups remain unchanged.
+- 182 isolated Chromium assertions passed across two viewport profiles. Full-app and Windows acceptance remain open.
+
 ## Phase 47 — v0.45.0 acceptance candidate
 
 - Explicit opt-in notification activity retention (off/25/100/200, 30 days), independent of reminder reservations and retries; manual backup restore preserves current policy.

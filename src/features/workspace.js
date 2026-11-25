@@ -87,6 +87,8 @@ function renderActivity() {
   const rows=activityRows.filter(row=>($('#activity-kind').value==='all'||row.kind===$('#activity-kind').value)&&
     ($('#activity-outcome').value==='all'||row.outcome===$('#activity-outcome').value));
   const list=$('#activity-list');list.replaceChildren();
+  const summary=$('#phase48-activity-summary');
+  if(summary&&typeof phase48ActivitySummary==='function') {const counts=phase48ActivitySummary(rows);summary.textContent=counts.enqueue_accepted+' accepted · '+counts.retry_scheduled+' retries · '+counts.retry_exhausted+' exhausted (shown entries)';}
   if (!rows.length) list.append(node('div','empty','No matching activity.'));
   for (const row of rows) {
     const line=node('div','module-item'), info=node('div','module-info');
@@ -98,6 +100,7 @@ function renderActivity() {
 async function readActivity(reader=nativeInvoke?()=>invoke('get_notification_activity'):null) {
   const ticket=++activityRequest, status=$('#activity-status');
   activityRows=[];$('#activity-list').replaceChildren();$('#activity-clear').disabled=true;
+  const summary=$('#phase48-activity-summary');if(summary)summary.textContent='No activity snapshot available.';
   if (!reader) {status.textContent='Requires the installed Windows app.';return;}
   $('#activity-read').disabled=true; status.textContent='Reading local activity…';
   try {
@@ -120,13 +123,22 @@ async function clearActivity(clearer=nativeInvoke?()=>invoke('clear_notification
   } catch {if(ticket===activityRequest){$('#activity-status').textContent='Clear failed. Existing history may remain.';$('#activity-clear').disabled=false;}}
   finally {if(ticket===activityRequest)$('#activity-read').disabled=false;}
 }
+let phase48AudioGroups = [];
+function phase48RefreshAudioView() {
+  const control=$('#phase48-audio-filter'), summary=$('#phase48-audio-summary');
+  if (!control || typeof phase48AudioFilter !== 'function') return;
+  if (!phase48AudioGroups.length) { if(summary)summary.textContent='No snapshot available.'; return; }
+  const filtered=phase48AudioFilter(phase48AudioGroups,control.value);
+  if(summary)summary.textContent=filtered.reduce((n,g)=>n+g.endpoints.length,0)+' shown / '+phase48AudioGroups.reduce((n,g)=>n+g.endpoints.length,0)+' returned';
+  renderAudio(filtered);
+}
 function renderAudio(groups) {
   const list=$('#audio-list');list.replaceChildren();
   for(const group of groups) {
     const section=node('div','audio-group'), title=node('b','',group.kind==='output'?'Output devices':'Input devices');
     section.append(title);
     if(group.status!=='ok') section.append(node('p','event-hint',group.status==='denied'?'Access denied by Windows.':group.status==='partial'?'Partial snapshot; some endpoints unavailable.':'Windows endpoint information unavailable.'));
-    if(group.status==='ok'&&!group.endpoints.length)section.append(node('p','event-hint','No endpoints returned.'));
+    if(group.status==='ok'&&!group.endpoints.length)section.append(node('p','event-hint','No endpoints match this view.'));
     for(const endpoint of group.endpoints) {
       const info=node('div','module-item'), box=node('div','module-info');
       box.append(node('b','',endpoint.name||'Unnamed endpoint'),node('small','',
@@ -140,18 +152,20 @@ function renderAudio(groups) {
 }
 async function readAudio(reader=nativeInvoke?()=>invoke('get_audio_inventory'):null) {
   const ticket=++audioRequest,status=$('#audio-status');
-  $('#audio-list').replaceChildren();
+  $('#audio-list').replaceChildren();phase48AudioGroups=[];phase48RefreshAudioView();
   if(!reader){status.textContent='Requires the installed Windows app.';return;}
   $('#audio-read').disabled=true;$('#audio-clear').disabled=false;status.textContent='Reading local audio endpoints…';
   try {
     const groups=normalizeAudio(await deviceDeadline(reader,10000));
     if(ticket!==audioRequest)return;
-    renderAudio(groups);status.textContent='Snapshot complete. No device settings changed.';
+    phase48AudioGroups=groups;
+    if ($('#phase48-audio-filter') && typeof phase48AudioFilter === 'function') phase48RefreshAudioView(); else renderAudio(groups);
+    status.textContent='Snapshot complete. No device settings changed.';
   } catch {if(ticket===audioRequest)status.textContent='Audio inventory unavailable or timed out. Retry.';}
   finally {if(ticket===audioRequest)$('#audio-read').disabled=false;}
 }
 function clearAudio(){
-  audioRequest++;$('#audio-list').replaceChildren();$('#audio-status').textContent='Audio list cleared.';
+  audioRequest++;$('#audio-list').replaceChildren();phase48AudioGroups=[];phase48RefreshAudioView();$('#audio-status').textContent='Audio list cleared.';
   $('#audio-read').disabled=false;$('#audio-clear').disabled=true;$('#audio-read').focus();
 }
 function initWorkspace(){

@@ -1,0 +1,7 @@
+# Phase 48 — candidate report
+
+Baseline 5c02cc55aad32d1da59470600bd0b902994bf95b. v0.45.0 unchanged. Main remains untouched. No new Actions runs on candidate, only historical unrelated runs. Direct Git DNS failed, Rust/Cargo absent, connector cannot dispatch workflow. No installer or Rust/native test claim.
+
+Phase 48 implements 16 contextual workspace strips and individual CSS refinements, audio filtering and outcome summary, extension-based Shelf filtering shared by metadata operations, fail-closed automatic notification activity recovery, and exclusion of journal/consent from new explicit backups. Existing backups, reminder ledger/retry state, user files and app branding retained. Recovery writes a sanitized new primary via Store::save; actual Windows recovery tests added but NOT RUN. Historical backups may retain old data. No secure erasure guarantee. Existing Windows native endpoints and media integration unchanged; native acceptance still pending.
+
+Actual isolated Chromium: 182 assertions PASS, 760x470 at 100% and 560x420 at 150%, exact phase48 module/style fixture (surrounding app/IPC mocked). Screenshot SHA256 6fb05b87caec01ef2df95e43eef84ced267d35b781847f2c64823bf60fab2405. JS blob 83fbe1c222cb0ae061aff422da22f31cdf39d0f5, CSS blob 80191d67c77c66ae6b914bd6e0e2e0af481a4d98. Not a full-app screenshot or Poni comparison. Full browser integration and prior suite not executed; screenshot matrix and Rust gates pending. 28.9% is last measured parity, not a new score.

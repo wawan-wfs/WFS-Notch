@@ -1,0 +1,23 @@
+/* Phase 48: each workspace gets an independent layout treatment and contextual shortcuts. */
+.phase48-context{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 14px;padding:9px 10px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;background:var(--panel);min-width:0}
+.phase48-context-copy{display:grid;gap:3px;min-width:0}.phase48-context-copy small{font-size:9px;letter-spacing:1px;color:var(--muted)}.phase48-context-copy b{font-size:12px;line-height:1.3;overflow-wrap:anywhere}
+.phase48-context-actions{display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-end}.phase48-action{border:1px solid var(--line);background:transparent;color:var(--text);border-radius:7px;font-size:10px;padding:6px 8px;min-height:28px}.phase48-related{color:var(--accent)}.phase48-action:hover{border-color:var(--accent)}
+#panel-home .workspace-card{border-radius:14px}#panel-home .home-grid{gap:8px;margin-top:12px}
+#panel-todos .todo-entry{padding:10px;border:1px solid var(--line);border-radius:12px}#panel-todos .todo-item .title{overflow-wrap:anywhere;min-width:0}
+#panel-notes .note-editor{min-width:0}#panel-notes .note-layout{grid-template-columns:minmax(100px, .8fr) minmax(0,1.7fr)}
+#panel-calendar .calendar-month-grid{gap:4px}#panel-calendar .event-info{overflow-wrap:anywhere}#panel-calendar .event-form{border-radius:12px}
+#panel-system .system-card{padding:14px}#panel-system .audio-group{padding:9px;border:1px solid var(--line);border-radius:9px;margin:6px 0}
+#panel-timer .timer-layout{gap:18px;flex-wrap:wrap;justify-content:center}#panel-timer .timer-controls{min-width:150px}
+#panel-health .health-grid{gap:9px}#panel-health .system-card{padding:12px;min-width:0}
+#panel-day .day-summary{gap:8px}#panel-day .module-list{border:1px solid var(--line);border-radius:10px;padding:7px}
+#panel-countdown .countdown-face{font-variant-numeric:tabular-nums}#panel-countdown .countdown-editor{border:1px solid var(--line);border-radius:10px;padding:10px}
+#panel-weather .weather-current{border:1px solid var(--line);border-radius:12px}#panel-weather .weather-details{min-width:0;overflow-wrap:anywhere}
+#panel-flashcards .flashcard-face{border:1px solid var(--line);border-radius:14px;overflow-wrap:anywhere}#panel-flashcards .flashcards-select{max-width:100%}
+#panel-habits .module-list{display:grid;gap:6px}#panel-habits .module-info{min-width:0;overflow-wrap:anywhere}
+#panel-dock .launch-grid{gap:7px}#panel-dock .phase44-card{border-radius:14px}#panel-dock .module-info{min-width:0;overflow-wrap:anywhere}
+#panel-media .now-playing{border-radius:14px}#panel-media .selected-player-actions{flex-wrap:wrap}#panel-media .media-time{font-variant-numeric:tabular-nums}
+#panel-tools .tools-grid{gap:9px}#panel-tools .tool-card{min-width:0;border-radius:12px}
+#panel-settings .privacy-settings,#panel-settings .display-options{border-radius:12px}#panel-settings .settings-row>div{min-width:0;overflow-wrap:anywhere}
+.phase48-filter{display:grid;gap:4px;color:var(--muted);font-size:11px;margin:8px 0}.phase48-filter select{width:100%;min-width:0;padding:7px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text)}
+@media(max-width:560px){.phase48-context{align-items:flex-start;flex-wrap:wrap}.phase48-context-actions{justify-content:flex-start}#panel-notes .note-layout{grid-template-columns:minmax(0,1fr);height:auto}#panel-notes .note-list{max-height:110px}#panel-notes .note-editor textarea{min-height:100px}#panel-timer .timer-controls{min-width:0;flex-basis:100%}}
+@media(forced-colors:active){.phase48-context,.phase48-action,.phase48-filter select{border:1px solid ButtonText}.phase48-related{color:LinkText}}

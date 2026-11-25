@@ -823,6 +823,24 @@ fn read_recovery_state(backup: &Path, previous: &Path) -> Result<(AppData, PathB
     }
 }
 
+fn reset_recovered_activity(data: &mut AppData) {
+    data.settings.activity_history_limit = 0;
+    data.notification_activity.clear();
+}
+
+fn persist_recovered_state(path: &Path, mut data: AppData) -> Result<AppData, String> {
+    // The caller has either moved the corrupt primary aside or observed a missing
+    // primary. Keep both recovery generations intact, including private old copies.
+    reset_recovered_activity(&mut data);
+    data.sanitize();
+    let store = Store {
+        path: path.to_path_buf(),
+        data,
+    };
+    store.save()?;
+    Ok(store.data)
+}
+
 impl Store {
     fn open(path: PathBuf) -> Result<Self, String> {
         let backup = path.with_extension("json.bak");
@@ -831,7 +849,7 @@ impl Store {
             match read_state(&path) {
                 Ok(data) => data,
                 Err(primary_error) => {
-                    let (restored, recovery_path) =
+                    let (restored, _recovery_path) =
                         read_recovery_state(&backup, &previous).map_err(|backup_error| {
                             format!(
                                 "Cannot recover local data: {primary_error}; {backup_error}. Files were not deleted."
@@ -841,15 +859,13 @@ impl Store {
                     // intact under a distinct name for manual investigation.
                     let damaged = path.with_extension(format!("corrupt-{}.json", now_ms()));
                     fs::rename(&path, &damaged).map_err(|error| error.to_string())?;
-                    fs::copy(&recovery_path, &path).map_err(|error| error.to_string())?;
-                    restored
+                    persist_recovered_state(&path, restored)?
                 }
             }
         } else if backup.exists() || previous.exists() {
             // A crash between primary rotation and commit may leave no primary.
-            let (restored, recovery_path) = read_recovery_state(&backup, &previous)?;
-            fs::copy(&recovery_path, &path).map_err(|error| error.to_string())?;
-            restored
+            let (restored, _recovery_path) = read_recovery_state(&backup, &previous)?;
+            persist_recovered_state(&path, restored)?
         } else {
             AppData::default()
         };
@@ -2050,7 +2066,9 @@ fn create_backup(store: State<'_, Mutex<Store>>) -> Result<BackupInfo, String> {
     let path = backup_path(&locked, &id)?;
     fs::create_dir_all(path.parent().ok_or("Invalid backup directory")?)
         .map_err(|e| e.to_string())?;
-    let content = serde_json::to_vec_pretty(&locked.data).map_err(|e| e.to_string())?;
+    let mut snapshot = locked.data.clone();
+    reset_recovered_activity(&mut snapshot);
+    let content = serde_json::to_vec_pretty(&snapshot).map_err(|e| e.to_string())?;
     // Do not overwrite existing backups, even if timestamps collide.
     let mut file = File::options()
         .write(true)
@@ -3196,6 +3214,45 @@ mod tests {
         let _ = fs::remove_file(&path);
         let _ = fs::remove_file(&backup);
         let _ = fs::remove_file(&previous);
+    }
+
+    #[test]
+    fn automatic_recovery_does_not_resurrect_notification_consent() {
+        let path = temp_file("activity-recovery");
+        let backup = path.with_extension("json.bak");
+        let mut state = AppData::default();
+        state.settings.activity_history_limit = 100;
+        state.settings.accent = "#222222".into();
+        state.reminder_deliveries.insert("opaque".into(), now_ms() + 60_000);
+        let mut encoded = serde_json::to_value(&state).unwrap();
+        encoded["notification_activity"] = serde_json::json!([{
+            "at_ms": now_ms(), "kind": "task", "outcome": "enqueue_accepted", "attempt": 1
+        }]);
+        let bytes = serde_json::to_vec(&encoded).unwrap();
+        fs::write(&backup, &bytes).unwrap();
+        let recovered = Store::open(path.clone()).unwrap();
+        assert_eq!(recovered.data.settings.activity_history_limit, 0);
+        assert!(recovered.data.notification_activity.is_empty());
+        assert_eq!(recovered.data.settings.accent, "#222222");
+        assert_eq!(recovered.data.reminder_deliveries, state.reminder_deliveries);
+        assert_eq!(fs::read(&backup).unwrap(), bytes);
+        let reopened = Store::open(path.clone()).unwrap();
+        assert_eq!(reopened.data.settings.activity_history_limit, 0);
+        assert!(reopened.data.notification_activity.is_empty());
+        let _ = fs::remove_file(&path);
+        let _ = fs::remove_file(&backup);
+    }
+
+    #[test]
+    fn manual_backup_snapshot_excludes_activity_but_keeps_reminder_ledger() {
+        let mut state = AppData::default();
+        state.settings.activity_history_limit = 200;
+        state.reminder_deliveries.insert("opaque".into(), 100);
+        let mut snapshot = state.clone();
+        reset_recovered_activity(&mut snapshot);
+        assert_eq!(snapshot.settings.activity_history_limit, 0);
+        assert_eq!(state.settings.activity_history_limit, 200);
+        assert_eq!(snapshot.reminder_deliveries, state.reminder_deliveries);
     }
 
     #[test]

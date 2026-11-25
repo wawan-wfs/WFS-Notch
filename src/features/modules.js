@@ -302,10 +302,15 @@ function shelfCommit(next) {
     return false;
   }
 }
+function phase48VisibleShelf() {
+  const rows = shelfView(shelfEntries,$('#shelf-search').value,$('#shelf-sort').value);
+  return typeof phase48ShelfFilter === 'function'
+    ? phase48ShelfFilter(rows,$('#phase48-shelf-kind')?.value || 'all') : rows;
+}
 function renderShelf(focusIndex = null) {
   const list = $('#shelf-list');
   list.replaceChildren();
-  const visible = shelfView(shelfEntries,$('#shelf-search').value,$('#shelf-sort').value);
+  const visible = phase48VisibleShelf();
   $('#shelf-count').textContent = shelfEntries.length + ' / ' + SHELF_LIMIT;
   $('#shelf-clear').disabled = !shelfEntries.length;
   $('#shelf-remember').checked = shelfRemember;
@@ -370,7 +375,7 @@ function initShelf() {
     renderShelf(); input.focus();
   });
   $('#shelf-remove-shown').addEventListener('click', () => {
-    const visible = shelfView(shelfEntries,$('#shelf-search').value,$('#shelf-sort').value);
+    const visible = phase48VisibleShelf();
     if (!visible.length || !confirm('Remove '+visible.length+' shown metadata entries? Original files stay unchanged.')) return;
     const indexes = new Set(visible.map(row=>row.index));
     if (!shelfCommit(shelfEntries.filter((_,index)=>!indexes.has(index)))) return;
@@ -378,7 +383,7 @@ function initShelf() {
     renderShelf(); $('#shelf-search').focus();
   });
   $('#shelf-copy-names').addEventListener('click', async () => {
-    const names = shelfView(shelfEntries,$('#shelf-search').value,$('#shelf-sort').value).map(row=>row.item.name);
+    const names = phase48VisibleShelf().map(row=>row.item.name);
     if (!names.length) return;
     try { await navigator.clipboard.writeText(names.join('\n')); shelfStatus('Copied '+names.length+' file names only.'); }
     catch { shelfStatus('Clipboard unavailable. File names were not copied.'); }
