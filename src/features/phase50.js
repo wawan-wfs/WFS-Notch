@@ -47,6 +47,10 @@ function wfs50Gaps(events,key,startHour,endHour,minMinutes) {
   if(end>cursor&&end-cursor>=minMinutes*60000)gaps.push({start:cursor,end});
   return {gaps,busyMinutes:Math.round(busy/60000),windowMinutes:Math.round((end-start)/60000),allDay,unknown};
 }
+function wfs50RetainedActivity(rows,now){
+  const cutoff=now-30*86400000;
+  return rows.filter(r=>Number.isFinite(r.at_ms)&&r.at_ms>=cutoff&&r.at_ms<=now+30*86400000);
+}
 function wfs50AudioStatus(groups){
   const complete=groups.length===2&&groups.every(g=>g.status==='ok'&&!g.truncated);
   if(complete)return 'Snapshot complete. No device settings changed.';

@@ -89,6 +89,7 @@ function workspaceEvents(items,now=Date.now()) {
 }
 function renderActivity() {
   if(!activitySnapshotAvailable)return;
+  if(typeof wfs50RetainedActivity==='function')activityRows=wfs50RetainedActivity(activityRows,Date.now());
   const windowMode=$('#phase49-activity-window')?.value||'all';
   const source=typeof plannerActivityWindow==='function'?plannerActivityWindow(activityRows,windowMode,Date.now()):activityRows;
   const rows=source.filter(row=>($('#activity-kind').value==='all'||row.kind===$('#activity-kind').value)&&
