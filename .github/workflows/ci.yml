@@ -50,6 +50,8 @@ jobs:
         run: node tests/phase50_workbench.test.cjs
       - name: Phase 50 retained activity regression
         run: node tests/phase50_retention.test.cjs
+      - name: Phase 50 habit and flashcard review regression
+        run: node tests/phase50_review.test.cjs
       - name: Phase 50 browser workbench integration
         run: python tests/browser_phase50.py
       - name: Phase 49 JavaScript syntax

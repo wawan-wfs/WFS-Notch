@@ -77,7 +77,7 @@ function renderDay() {
   $('#day-progress-meter').style.width = (ratio * 100).toFixed(2) + '%';
   const finished = data.todos.filter(t => t.done).length;
   $('#day-task-progress').textContent = finished + ' / ' + data.todos.length + ' tasks completed';
-  const events = data.events.filter(e => e.starts_at_ms >= start && e.starts_at_ms < end)
+  const events = data.events.filter(e => typeof plannerEventOnDate==='function' ? plannerEventOnDate(e,localDay(now)) : e.starts_at_ms >= start && e.starts_at_ms < end)
     .sort((a,b) => a.starts_at_ms - b.starts_at_ms);
   $('#day-events-count').textContent = events.length + ' events today';
   const list = $('#day-event-list');
@@ -86,7 +86,8 @@ function renderDay() {
     list.append(node('div','empty','No events scheduled for today.'));
   } else {
     for (const event of events) {
-      list.append(node('div','module-item',new Date(event.starts_at_ms).toLocaleTimeString(undefined, {hour:'2-digit',minute:'2-digit'}) + ' · ' + event.title));
+      const label = event.all_day ? 'All day' : event.starts_at_ms < start ? 'Continues' : new Date(event.starts_at_ms).toLocaleTimeString(undefined, {hour:'2-digit',minute:'2-digit'});
+      list.append(node('div','module-item',label + ' · ' + event.title));
     }
   }
 }
@@ -136,6 +137,7 @@ function renderFlashcards() {
   $('#flashcard-flip').textContent = flashcardShowingAnswer ? 'Show question' : 'Show answer';
   $('#flashcard-position').textContent = cards.length ?
     'Card ' + (flashcardIndex + 1) + ' of ' + cards.length : 'No cards in this note';
+  if(typeof wfs50RenderReview==='function')wfs50RenderReview(cards);
 }
 function renderParity() {
   if (!$('#health-water')) return;

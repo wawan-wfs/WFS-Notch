@@ -72,6 +72,29 @@ function wfs50MediaSessions(raw){
   return [...bySource.values()];
 }
 
+function wfs50HabitWeek(habits,key) {
+  const days=Array.from({length:7},(_,i)=>plannerShift(key,i-6)).filter(Boolean);
+  const rows=habits.map(h=>{
+    const done=new Set(Array.isArray(h.completed_dates)?h.completed_dates:[]);
+    const checks=days.map(d=>done.has(d));
+    return {title:String(h.title||'Untitled habit'),checks,count:checks.filter(Boolean).length};
+  });
+  return {days,rows,total:rows.reduce((n,r)=>n+r.count,0),possible:days.length*rows.length};
+}
+function wfs50ReviewState(previous,key,cards) {
+  const signature=JSON.stringify([key,cards]);
+  return previous?.signature===signature?previous:{signature,ratings:new Map()};
+}
+function wfs50RateReview(state,index,rating,count,revealed){
+  if(!revealed||!Number.isInteger(index)||index<0||index>=count||!['known','again'].includes(rating))return false;
+  state.ratings.set(index,rating);return true;
+}
+function wfs50ReviewSummary(state,count){
+  let known=0,again=0;
+  for(const [i,r] of state.ratings)if(i<count){if(r==='known')known++;else if(r==='again')again++;}
+  return {known,again,remaining:Math.max(0,count-known-again)};
+}
+
 let wfs50SearchArmed=false,wfs50SearchVersion=0,wfs50GapArmed=false,wfs50SearchNavigating=false;
 function wfs50RenderSearch(){
   const host=$('#phase50-search-results');if(!host||!wfs50SearchArmed)return;
@@ -131,9 +154,49 @@ function wfs50RenderGaps(){
   if(!result.gaps.length)list.append(node('p','empty','No gaps of the selected length.'));
   if(result.gaps.length>24)list.append(node('p','event-hint','Showing first 24 gaps.'));
 }
+let wfs50Review=null;
+function wfs50RenderReview(cards){
+  const status=$('#phase50-review-status');if(!status)return;
+  wfs50Review=wfs50ReviewState(wfs50Review,flashcardNoteId,cards);
+  const summary=wfs50ReviewSummary(wfs50Review,cards.length);
+  status.textContent=summary.known+' known · '+summary.again+' review again · '+summary.remaining+' unrated (this session)';
+  for(const id of ['phase50-known','phase50-again'])$('#'+id).disabled=!cards.length||!flashcardShowingAnswer;
+  $('#phase50-review-reset').disabled=!wfs50Review.ratings.size;
+}
+function wfs50Rate(rating){
+  const cards=cardsFromNote(flashcardNoteId);
+  wfs50Review=wfs50ReviewState(wfs50Review,flashcardNoteId,cards);
+  if(!wfs50RateReview(wfs50Review,flashcardIndex,rating,cards.length,flashcardShowingAnswer))return;
+  flashcardIndex=(flashcardIndex+1)%cards.length;flashcardShowingAnswer=false;renderFlashcards();
+}
+function wfs50RenderHabitWeek(){
+  const host=$('#phase50-habit-week');if(!host)return;
+  host.replaceChildren();
+  if(appDataLoadStatus!=='ready')return;
+  const week=wfs50HabitWeek(data.habits||[],workspaceLocalDay(Date.now()));
+  const summary=node('p','event-hint',week.total+' check-ins / '+week.possible+' displayed habit-days (current habits, last seven dates)');
+  host.append(summary);
+  if(!week.rows.length)return;
+  const table=node('table','phase50-habit-table');table.setAttribute('aria-label','Last seven local dates of current habits');
+  const head=node('tr','');head.append(node('th','','Habit'));
+  for(const d of week.days){const th=node('th','',d.slice(5));th.scope='col';head.append(th);}
+  const thead=node('thead','');thead.append(head);table.append(thead);
+  const body=node('tbody','');
+  for(const row of week.rows){
+    const tr=node('tr',''),name=node('th','',row.title);name.scope='row';tr.append(name);
+    row.checks.forEach((done,i)=>{const td=node('td','',done?'✓':'—');td.setAttribute('aria-label',week.days[i]+(done?' completed':' no recorded check-in'));tr.append(td);});
+    body.append(tr);
+  }
+  table.append(body);host.append(table);
+}
+
 function wfs50Init(){
   const form=$('#phase50-search-form');if(!form||form.dataset.ready==='true')return;
   form.dataset.ready='true';
+  $('#phase50-known').addEventListener('click',()=>wfs50Rate('known'));
+  $('#phase50-again').addEventListener('click',()=>wfs50Rate('again'));
+  $('#phase50-review-reset').addEventListener('click',()=>{wfs50Review=null;renderFlashcards();});
+  wfs50RenderReview(cardsFromNote(flashcardNoteId));wfs50RenderHabitWeek();
   form.addEventListener('submit',e=>{e.preventDefault();wfs50SearchArmed=true;wfs50RenderSearch();});
   $('#phase50-search-clear').addEventListener('click',wfs50ClearSearch);
   for(const id of ['phase50-search','phase50-search-kind','phase50-search-body'])$('#'+id).addEventListener('input',()=>{wfs50SearchArmed=false;wfs50SearchVersion++;$('#phase50-search-results').replaceChildren();$('#phase50-search-status').textContent='Submit to search the current selection.';});

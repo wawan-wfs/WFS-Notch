@@ -6,7 +6,7 @@
 - Local record search across tasks, calendar, notes, habits and pinned links; opt-in note body search with no body output, no network or persistence.
 - Planner time-gap analysis with merged timed-event intervals and explicit excluded all-day/unknown-duration counts.
 - Copy visible Shelf metadata JSON with confirmation; audio snapshot status distinguishes partial/denied; media source duplicates fail closed; native activity reads clone only bounded journal instead of full state.
-- 29 focused model assertions passed; new candidate CI and native physical acceptance pending.
+- Add seven-day habit history, session-only flashcard recall rating and correct Day Progress coverage for overlapping and all-day events. 45 new focused assertions and 106 prior model/fixture assertions passed; new candidate CI and native physical acceptance pending.
 
 ## Phase 49 — v0.45.0 acceptance candidate
 

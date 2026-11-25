@@ -26,6 +26,7 @@ function renderHabits() {
   const count = data.habits.filter(h => h.completed_dates.includes(today)).length;
   $('#habit-count').textContent = count + ' OF ' + data.habits.length + ' TODAY';
   $('#home-habit-progress').textContent = count + ' / ' + data.habits.length;
+  if(typeof wfs50RenderHabitWeek==='function')wfs50RenderHabitWeek();
   const list = $('#habit-list');
   list.replaceChildren();
   if (!data.habits.length) {

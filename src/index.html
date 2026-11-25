@@ -268,13 +268,13 @@
           <select id="flashcards-note" class="flashcards-select" aria-label="Select flashcard note" disabled><option value="">No notes available</option></select>
           <div class="flashcard-face" id="flashcard-face">Select a note with flashcard lines.</div>
           <div class="tool-actions"><button class="primary" id="flashcard-flip" type="button">Show answer</button><button class="secondary" id="flashcard-next" type="button">Next card</button></div>
-          <p id="flashcard-position" class="event-hint">Study locally; no account or AI service required.</p>
+          <p id="flashcard-position" class="event-hint">Study locally; no account or AI service required.</p><section class="workspace-card"><h3>Session review</h3><p id="phase50-review-status" class="event-hint" role="status">Reveal a card to rate recall. Session only.</p><div class="tool-actions"><button id="phase50-known" class="secondary" type="button" disabled>Known</button><button id="phase50-again" class="secondary" type="button" disabled>Review again</button><button id="phase50-review-reset" class="secondary" type="button" disabled>Reset review</button></div></section>
         </section>
         <section class="panel" id="panel-habits">
           <div class="section-heading"><div><h2>Habit tracker</h2><p>Build daily consistency, one check-in at a time.</p></div><span class="section-pill" id="habit-count">0 TODAY</span></div>
           <form id="habit-form" class="input-row"><input id="habit-title" maxlength="120" placeholder="New habit, e.g. Read for 20 minutes" aria-label="New habit" required><button class="primary" type="submit">Add habit</button></form>
           <p class="event-hint">Check-ins are saved locally. The daily date follows your PC's timezone; no account required.</p>
-          <div class="module-list" id="habit-list" aria-live="polite"></div>
+          <div class="module-list" id="habit-list" aria-live="polite"></div><details class="workspace-card phase50-details"><summary>Seven-day history</summary><div id="phase50-habit-week" class="phase50-habit-scroll"></div><p class="event-hint">Read-only; missing check-ins are not evidence of missed days before a habit existed.</p></details>
         </section>
         <section class="panel" id="panel-dock">
           <div class="section-heading"><div><h2>Dock &amp; quick launch</h2><p>Launch Windows essentials and pin your favorite websites.</p></div><span class="section-pill">WINDOWS</span></div>
