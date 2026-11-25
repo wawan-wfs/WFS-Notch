@@ -78,6 +78,33 @@ pub(super) fn normalize_activity(rows: &mut Vec<NotificationActivity>, now: u128
     }
 }
 
+pub(super) fn apply_activity_policy(data: &mut AppData, now: u128) {
+    if !matches!(data.settings.activity_history_limit, 0 | 25 | 100 | 200) {
+        data.settings.activity_history_limit = 0;
+    }
+    normalize_activity(&mut data.notification_activity, now);
+    let limit = usize::from(data.settings.activity_history_limit);
+    if data.notification_activity.len() > limit {
+        let excess = data.notification_activity.len() - limit;
+        data.notification_activity.drain(..excess);
+    }
+}
+
+#[tauri::command]
+pub fn set_notification_activity_limit(
+    store: State<'_, Mutex<Store>>,
+    limit: u16,
+) -> Result<AppData, String> {
+    if !matches!(limit, 0 | 25 | 100 | 200) {
+        return Err("Choose a supported activity history limit".into());
+    }
+    with_store(store, |data| {
+        data.settings.activity_history_limit = limit;
+        apply_activity_policy(data, now_ms());
+        Ok(())
+    })
+}
+
 fn record_activity(
     data: &mut AppData,
     now: u128,
@@ -85,6 +112,9 @@ fn record_activity(
     outcome: ActivityOutcome,
     attempt: u8,
 ) {
+    if !matches!(data.settings.activity_history_limit, 25 | 100 | 200) {
+        return;
+    }
     if let Ok(at_ms) = u64::try_from(now) {
         data.notification_activity.push(NotificationActivity {
             at_ms,
@@ -92,7 +122,7 @@ fn record_activity(
             outcome,
             attempt,
         });
-        normalize_activity(&mut data.notification_activity, now);
+        apply_activity_policy(data, now);
     }
 }
 
@@ -103,8 +133,9 @@ pub fn get_notification_activity(
     let guard = store
         .lock()
         .map_err(|_| "Storage lock unavailable".to_owned())?;
-    let mut rows = guard.data.notification_activity.clone();
-    normalize_activity(&mut rows, now_ms());
+    let mut snapshot = guard.data.clone();
+    apply_activity_policy(&mut snapshot, now_ms());
+    let mut rows = snapshot.notification_activity;
     rows.reverse();
     Ok(rows)
 }
@@ -470,6 +501,9 @@ where
     }
     // Success already has a durably committed reservation. Removing a stale
     // retry marker is housekeeping, not a reason to repeat the OS send.
+    if guard.data.settings.activity_history_limit == 0 && !guard.data.reminder_retries.contains_key(&key) {
+        return Ok(true);
+    }
     let attempt = guard.data.reminder_retries.get(&key).map_or(1, |previous| {
         previous.attempts.saturating_add(1).min(MAX_RETRY_ATTEMPTS)
     });
@@ -717,9 +751,43 @@ mod tests {
     use super::*;
 
     #[test]
+    fn activity_policy_is_opt_in_and_does_not_change_delivery_reservations() {
+        let now = u128::from(ACTIVITY_RETENTION_MS) + 100;
+        let mut data = AppData::default();
+        data.reminder_deliveries.insert("opaque".into(), now + 100);
+        record_activity(
+            &mut data,
+            now,
+            ActivityKind::Calendar,
+            ActivityOutcome::EnqueueAccepted,
+            1,
+        );
+        assert!(data.notification_activity.is_empty());
+        data.settings.activity_history_limit = 100;
+        for _ in 0..110 {
+            record_activity(
+                &mut data,
+                now,
+                ActivityKind::Task,
+                ActivityOutcome::RetryScheduled,
+                1,
+            );
+        }
+        assert_eq!(data.notification_activity.len(), 100);
+        data.settings.activity_history_limit = 25;
+        apply_activity_policy(&mut data, now);
+        assert_eq!(data.notification_activity.len(), 25);
+        data.settings.activity_history_limit = 0;
+        apply_activity_policy(&mut data, now);
+        assert!(data.notification_activity.is_empty());
+        assert_eq!(data.reminder_deliveries.get("opaque"), Some(&(now + 100)));
+    }
+
+    #[test]
     fn activity_is_bounded_redacted_and_expires() {
         let now = u128::from(ACTIVITY_RETENTION_MS) + 100;
         let mut data = AppData::default();
+        data.settings.activity_history_limit = 200;
         for _ in 0..250 {
             record_activity(
                 &mut data,
@@ -745,6 +813,7 @@ mod tests {
         let mut current = AppData::default();
         current.reminder_deliveries.insert("opaque".into(), 1000);
         let mut backup = current.clone();
+        backup.settings.activity_history_limit = 25;
         record_activity(
             &mut backup,
             100,
@@ -754,6 +823,7 @@ mod tests {
         );
         crate::preserve_reminder_history(&mut backup, &current);
         assert!(backup.notification_activity.is_empty());
+        assert_eq!(backup.settings.activity_history_limit, 0);
         assert_eq!(backup.reminder_deliveries, current.reminder_deliveries);
     }
 

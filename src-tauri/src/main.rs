@@ -42,6 +42,8 @@ struct Settings {
     reduce_motion: bool,
     high_contrast: bool,
     task_history_limit: u16,
+    // Separate opt-in for the title-free notification activity journal.
+    activity_history_limit: u16,
 }
 impl Default for Settings {
     fn default() -> Self {
@@ -61,6 +63,7 @@ impl Default for Settings {
             reduce_motion: false,
             high_contrast: false,
             task_history_limit: MAX_TASK_COMPLETIONS,
+            activity_history_limit: 0,
         }
     }
 }
@@ -635,7 +638,7 @@ struct AppData {
 
 impl AppData {
     fn sanitize(&mut self) {
-        notifications::normalize_activity(&mut self.notification_activity, now_ms());
+        notifications::apply_activity_policy(self, now_ms());
         self.health.water_glasses = self.health.water_glasses.min(40);
         self.health.break_count = self.health.break_count.min(100);
         self.health.calm_minutes = self.health.calm_minutes.min(600);
@@ -907,7 +910,7 @@ impl Store {
             self.data = previous;
             return Err(error);
         }
-        notifications::normalize_activity(&mut self.data.notification_activity, now_ms());
+        notifications::apply_activity_policy(&mut self.data, now_ms());
         if let Err(error) = self.save() {
             self.data = previous;
             return Err(error);
@@ -2100,6 +2103,7 @@ fn list_backups(store: State<'_, Mutex<Store>>) -> Result<Vec<BackupInfo>, Strin
 fn preserve_reminder_history(recovered: &mut AppData, existing: &AppData) {
     // Activity is a current local journal, not restorable from an old backup.
     recovered.notification_activity = existing.notification_activity.clone();
+    recovered.settings.activity_history_limit = existing.settings.activity_history_limit;
     let current: HashMap<_, _> = existing
         .todos
         .iter()
@@ -2483,6 +2487,7 @@ fn main() {
             notifications::notify_test,
             notifications::get_reminder_scheduler_status,
             notifications::get_notification_activity,
+            notifications::set_notification_activity_limit,
             notifications::clear_notification_activity,
             notifications::get_windows_notification_permission,
             notifications::notify_due_event,

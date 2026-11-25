@@ -1,0 +1,25 @@
+/* Phase 47: shared, original WFS visual system. No new navigation routes. */
+.phase47-modulebar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 28px;border-bottom:1px solid var(--line);flex-shrink:0;color:var(--muted);font-size:11px}
+.phase47-modulebar>span{min-width:0;overflow-wrap:anywhere;font-weight:650}
+.phase47-modulebar>div{display:flex;gap:10px;flex-shrink:0}
+.phase47-modulebar button{font-size:11px;color:var(--text);background:transparent;border:1px solid var(--line);border-radius:7px;padding:4px 8px}
+.phase47-modulebar button:hover{border-color:var(--accent)}
+.panel.active:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.panel .section-heading h2{font-size:clamp(17px,3.2vw,21px);font-weight:720;line-height:1.2}
+.panel .section-heading p,.panel .event-hint,.panel .empty{color:var(--muted);line-height:1.55}
+.panel .section-heading{gap:10px;flex-wrap:wrap}
+.panel .section-heading>div{min-width:0}
+.panel .section-pill{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.panel :is(.workspace-card,.phase44-card,.system-card,.tool-card,.mini-card){border-color:var(--line);min-width:0}
+.panel :is(input,select,textarea){max-width:100%;min-width:0}
+.panel :is(.tool-actions,.preset-row,.note-actions,.input-row){flex-wrap:wrap}
+.panel .event-item.past{opacity:1;border-color:var(--line)}
+.panel .event-item.past .event-date{color:var(--muted)}
+.phase47-agenda-row{display:grid;grid-template-columns:minmax(58px,auto) minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:12px}
+.phase47-agenda-row b{overflow-wrap:anywhere;font-weight:600}
+.phase47-agenda-row small,.phase47-agenda-time{color:var(--muted);font-size:11px}
+.phase47-agenda-time{font-variant-numeric:tabular-nums}
+.phase47-policy{display:grid;gap:6px;margin:12px 0;color:var(--text);font-size:12px}
+.phase47-policy select{padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text)}
+@media(max-width:560px){.phase47-modulebar{padding:5px 17px}.phase47-modulebar>div{gap:4px}.phase47-modulebar button{padding:4px 6px}.panel .section-heading{margin-bottom:10px}}
+@media(forced-colors:active){.phase47-modulebar button,.phase47-policy select{border:1px solid ButtonText}.panel.active:focus-visible{outline-color:Highlight}}

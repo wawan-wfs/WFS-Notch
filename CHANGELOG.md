@@ -1,5 +1,12 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Phase 47 — v0.45.0 acceptance candidate
+
+- Explicit opt-in notification activity retention (off/25/100/200, 30 days), independent of reminder reservations and retries; manual backup restore preserves current policy.
+- Daily agenda combines due tasks and local calendar, task sorting by priority/deadline, exact filtered Shelf metadata byte totals.
+- Shared responsive visual refinements, cross-module content/navigation focus shortcuts, visible module position, better past event contrast. Existing 16 tabs retained.
+- Isolated Chromium module acceptance and native policy tests; full CI and native acceptance pending.
+
 ## Phase 46 — v0.45.0 acceptance candidate
 
 - Persistent, bounded title-free WFS reminder activity for calendar/task enqueue results, independent of reservation ledger and backup restore.

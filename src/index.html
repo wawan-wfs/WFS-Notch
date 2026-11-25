@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="styles/media.css">
   <link rel="stylesheet" href="styles/refinements.css">
   <link rel="stylesheet" href="styles/displays.css">
+  <link rel="stylesheet" href="styles/phase47.css">
 </head>
 <body>
   <div id="notch" class="notch" aria-label="WFS Notch">
@@ -43,6 +44,7 @@
         <button data-tab="tools" class="tab">Tools</button>
         <button data-tab="settings" class="tab">Settings</button>
       </nav>
+      <div class="phase47-modulebar"><span id="phase47-module-label" aria-live="polite">Overview · 1 / 16</span><div><button id="phase47-jump-content" type="button">Content</button><button id="phase47-jump-nav" type="button">Modules</button></div></div>
       <main>
         <section class="panel active" id="panel-home">
           <div class="welcome"><div><p class="eyebrow">PERSONAL COMMAND CENTER</p><h1>Make every minute count<span>.</span></h1><p>Everything essential, one hover away.</p></div><div class="hero-time" id="hero-time">00:00</div></div>
@@ -54,6 +56,7 @@
           <div class="home-upcoming"><span class="mini-label">NEXT CALENDAR EVENT</span><span id="next-event">No upcoming events</span><button class="text-button" id="go-calendar" type="button">View calendar →</button></div>
           <div class="phase4-home">Habits completed today <b id="home-habit-progress">0 / 0</b> · Pinned links <b id="home-link-count">0</b></div>
           <section class="workspace-card" aria-labelledby="workspace-title"><div class="section-heading"><div><h3 id="workspace-title">Your next actions</h3><p>Live local planning summary</p></div></div><div class="workspace-metrics"><button type="button" data-workspace-go="todos" data-workspace-filter="overdue"><small>OVERDUE TASKS</small><b id="workspace-overdue">—</b></button><button type="button" data-workspace-go="todos" data-workspace-filter="today"><small>DUE TODAY</small><b id="workspace-today">—</b></button><button type="button" data-workspace-go="calendar" data-workspace-filter="today"><small>TODAY'S EVENTS</small><b id="workspace-events">—</b></button></div><p class="event-hint" id="workspace-summary">Loading local planning state…</p><div class="tool-actions"><button class="secondary" type="button" data-workspace-go="dock">Open File Shelf</button><button class="secondary" type="button" data-workspace-go="media">Media controls</button></div></section>
+          <section class="workspace-card" aria-labelledby="phase47-agenda-heading"><div class="section-heading"><div><h3 id="phase47-agenda-heading">Today's agenda</h3><p>Tasks and calendar, ordered by time.</p></div><span id="phase47-agenda-count" class="section-pill">—</span></div><div id="phase47-agenda"></div></section>
           <div class="footnote">Local-first · Rust backend · Original WFS Notch design</div>
         </section>
         <section class="panel" id="panel-todos">
@@ -79,7 +82,7 @@
           </form>
           <small class="todo-help">Task due dates remain private and local. Optional desktop reminders can be enabled separately in Settings; they require the installed Windows app and WFS notification consent.</small>
           <small class="todo-help" id="task-repeat-help">Repeating tasks need a due date. Leave the timezone blank for elapsed intervals. With a timezone, enter the due time in that zone. Missing DST times are skipped and repeated times use the first occurrence.</small>
-          <div class="workspace-filters"><label>Find tasks<input id="workspace-task-search" type="search" maxlength="120" placeholder="Search titles"></label><label>Show tasks<select id="workspace-task-filter"><option value="all">All tasks</option><option value="open">Open</option><option value="today">Due today</option><option value="overdue">Overdue</option><option value="high">High priority</option><option value="done">Completed</option></select></label></div><p class="event-hint" id="workspace-task-count" aria-live="polite"></p>
+          <div class="workspace-filters"><label>Find tasks<input id="workspace-task-search" type="search" maxlength="120" placeholder="Search titles"></label><label>Show tasks<select id="workspace-task-filter"><option value="all">All tasks</option><option value="open">Open</option><option value="today">Due today</option><option value="overdue">Overdue</option><option value="high">High priority</option><option value="done">Completed</option></select></label></div><label class="phase47-policy">Sort tasks<select id="phase47-task-sort"><option value="recent">Recently added</option><option value="deadline">Deadline</option><option value="priority">Priority then deadline</option></select></label><p class="event-hint" id="workspace-task-count" aria-live="polite"></p>
           <div id="todo-list" class="list-scroll" aria-label="Saved tasks"></div>
           <details class="todo-history">
             <summary id="todo-history-summary">Recent task completions</summary>
@@ -290,7 +293,7 @@
             <div class="shelf-toolbar"><label>Search Shelf<input id="shelf-search" type="search" maxlength="120" placeholder="Filter file names"></label><label>Sort Shelf<select id="shelf-sort"><option value="added">Added order</option><option value="name">Name A–Z</option><option value="size">Largest first</option><option value="modified">Modified newest</option></select></label></div>
             <div class="tool-actions"><button id="shelf-clear" class="secondary" type="button" disabled>Clear Shelf</button><button id="shelf-forget" class="secondary" type="button" disabled>Forget saved Shelf</button><button id="shelf-remove-shown" class="secondary" type="button" disabled>Remove shown entries</button><button id="shelf-copy-names" class="secondary" type="button" disabled>Copy shown names</button></div>
             <label class="shelf-consent"><input id="shelf-remember" type="checkbox"> Remember names, sizes and modified dates across restarts (local only)</label>
-            <p class="event-hint" id="shelf-filter-count">0 of 0 shown</p>
+            <p class="event-hint" id="shelf-filter-count">0 of 0 shown</p><p class="event-hint" id="phase47-shelf-bytes">0 bytes in shown metadata</p>
             <p id="shelf-status" class="event-hint" role="status" aria-live="polite">No files selected.</p>
             <div id="shelf-list" class="module-list"></div>
           </section>
@@ -365,7 +368,7 @@
               <button type="button" id="notification-scheduler-refresh" class="secondary">Check status</button>
             </div>
             <p class="event-hint" id="notification-scheduler-status" role="status" aria-live="polite">Native reminder status is available only in the installed Windows desktop app.</p>
-            <section class="workspace-card" aria-labelledby="activity-heading"><h3 id="activity-heading">Notification activity</h3><p class="event-hint">WFS calendar and task enqueue attempts only. No notification titles or bodies. An accepted enqueue does not prove Windows displayed a toast. Up to 200 entries / 30 days; manual backup restore does not restore this journal. Recovery copies may retain older entries.</p><div class="workspace-filters"><label>Kind<select id="activity-kind"><option value="all">All</option><option value="calendar">Calendar</option><option value="task">Task</option></select></label><label>Outcome<select id="activity-outcome"><option value="all">All</option><option value="enqueue_accepted">Accepted</option><option value="retry_scheduled">Retry scheduled</option><option value="retry_exhausted">Retry exhausted</option></select></label></div><div class="tool-actions"><button id="activity-read" class="secondary" type="button">Read activity</button><button id="activity-clear" class="secondary" type="button" disabled>Clear history</button></div><p id="activity-status" class="event-hint" role="status">Not requested.</p><div id="activity-list" class="module-list"></div></section>
+            <section class="workspace-card" aria-labelledby="activity-heading"><h3 id="activity-heading">Notification activity</h3><p class="event-hint">WFS calendar and task enqueue attempts only. No notification titles or bodies. An accepted enqueue does not prove Windows displayed a toast. Off by default; choose retention below. Manual backup restore preserves the current privacy setting and journal. Recovery copies may retain older entries.</p><label class="phase47-policy">Record notification activity<select id="activity-limit" disabled><option value="0">Off — do not record</option><option value="25">25 entries / 30 days</option><option value="100">100 entries / 30 days</option><option value="200">200 entries / 30 days</option></select></label><p class="event-hint" id="activity-policy-status" role="status">History recording off by default.</p><div class="workspace-filters"><label>Kind<select id="activity-kind"><option value="all">All</option><option value="calendar">Calendar</option><option value="task">Task</option></select></label><label>Outcome<select id="activity-outcome"><option value="all">All</option><option value="enqueue_accepted">Accepted</option><option value="retry_scheduled">Retry scheduled</option><option value="retry_exhausted">Retry exhausted</option></select></label></div><div class="tool-actions"><button id="activity-read" class="secondary" type="button">Read activity</button><button id="activity-clear" class="secondary" type="button" disabled>Clear history</button></div><p id="activity-status" class="event-hint" role="status">Not requested.</p><div id="activity-list" class="module-list"></div></section>
           </div>
           <div class="display-options" aria-labelledby="display-options-title">
             <div class="settings-row">
@@ -417,5 +420,6 @@
   <script src="features/accessibility.js" defer></script>
   <script src="features/displays.js" defer></script>
   <script src="features/workspace.js" defer></script>
+  <script src="features/phase47.js" defer></script>
 </body>
 </html>

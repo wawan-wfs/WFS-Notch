@@ -58,6 +58,7 @@ function normalizeAudio(raw) {
 let workspaceReady=false, workspaceLastMinute=-1, activityRows=[], activityRequest=0, audioRequest=0;
 function workspaceRender() {
   if (!workspaceReady) return;
+  if (typeof phase47RenderAgenda === 'function') phase47RenderAgenda();
   if (typeof appDataLoadStatus==='string'&&appDataLoadStatus!=='ready') {
     for (const id of ['workspace-overdue','workspace-today','workspace-events']) $('#'+id).textContent='—';
     $('#workspace-summary').textContent=appDataLoadStatus==='loading'?'Loading local planning state…':'Local data could not be loaded. Reopen the application or complete a successful update before relying on this summary.';

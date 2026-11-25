@@ -311,6 +311,7 @@ function renderShelf(focusIndex = null) {
   $('#shelf-remember').checked = shelfRemember;
   $('#shelf-forget').disabled = !shelfRemember && !shelfStorageBlocked;
   $('#shelf-filter-count').textContent = visible.length + ' of ' + shelfEntries.length + ' shown';
+  if (typeof phase47ShelfSummary === 'function') phase47ShelfSummary(visible);
   $('#shelf-remove-shown').disabled = !visible.length;
   $('#shelf-copy-names').disabled = !visible.length;
   if (!visible.length) list.append(node('div','empty',shelfEntries.length ? 'No matching files.' : 'Shelf is empty.'));

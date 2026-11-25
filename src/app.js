@@ -10,7 +10,7 @@ const defaults = () => ({
   todos: [], task_completions: [], notes: [], events: [], calendar_tombstones: [], calendar_series: {}, reminder_retries: {}, habits: [], quick_links: [],
   health: { day: '', water_glasses: 0, break_count: 0, calm_minutes: 0 },
   countdown: { duration_seconds: 300, remaining_seconds: 300, ends_at_ms: null, completed: false, preset_minutes: [5, 15, 30] },
-  settings: { accent: '#d6b77a', hover_to_open: true, pin_open: false, monitor_id: 'primary', top_margin_px: 12, notifications_enabled: false, notifications_show_details: false, notifications_paused: false, task_due_reminders_enabled: false, always_on_top: true, auto_lower_fullscreen: false, ui_density: 'comfortable', reduce_motion: false, high_contrast: false, task_history_limit: 200 },
+  settings: { accent: '#d6b77a', hover_to_open: true, pin_open: false, monitor_id: 'primary', top_margin_px: 12, notifications_enabled: false, notifications_show_details: false, notifications_paused: false, task_due_reminders_enabled: false, always_on_top: true, auto_lower_fullscreen: false, ui_density: 'comfortable', reduce_motion: false, high_contrast: false, task_history_limit: 200, activity_history_limit: 0 },
   focus: { duration_seconds: 1500, remaining_seconds: 1500, ends_at_ms: null, completed: false, paused: false, cycle_enabled: false, phase: 'focus', completed_in_cycle: 0 },
 });
 let data = defaults();
@@ -685,6 +685,7 @@ async function switchTab(tab) {
   });
   $$('.panel').forEach(panel => panel.classList.toggle('active', panel.id === 'panel-' + tab));
   if (typeof wfsSyncNavigation === 'function') wfsSyncNavigation();
+  if (typeof phase47SyncNav === 'function') phase47SyncNav();
   if (tab === 'settings') void refreshBackups();
   if (tab === 'system') void refreshTelemetry();
   return true;
@@ -801,7 +802,9 @@ function renderTodos() {
   }
   const visibleTodos = typeof workspaceTasks === 'function' ? workspaceTasks(data.todos) : data.todos;
   if (!visibleTodos.length) list.append(node('div', 'empty', 'No tasks match the current filter.'));
-  for (const item of [...visibleTodos].reverse()) {
+  const orderedTodos = typeof phase47SortTasks === 'function'
+    ? phase47SortTasks(visibleTodos, $('#phase47-task-sort')?.value) : [...visibleTodos].reverse();
+  for (const item of orderedTodos) {
     const line = node('div', 'todo-item' + (item.done ? ' done' : ''));
     const check = node('button', 'check', item.done ? '✓' : '');
     check.type = 'button';
@@ -1249,6 +1252,7 @@ function render() {
   if (typeof renderExtras === 'function') renderExtras();
   if (typeof renderParity === 'function') renderParity();
   if (typeof workspaceRender === 'function') workspaceRender();
+  if (typeof phase47RenderPolicy === 'function') phase47RenderPolicy();
 }
 
 async function saveRevisionNote(draft) {
