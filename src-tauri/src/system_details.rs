@@ -235,8 +235,17 @@ pub async fn get_audio_inventory() -> Result<AudioInventory, String> {
     }
 }
 
+#[derive(Debug, Clone, Copy, Serialize, serde::Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum OutputRole {
+    Multimedia,
+    Console,
+    Communications,
+}
+
 #[derive(Debug, Serialize)]
 pub struct OutputVolume {
+    role: OutputRole,
     token: String,
     percent: u8,
     muted: bool,
@@ -260,6 +269,7 @@ fn valid_volume_change(percent: Option<u8>, muted: Option<bool>) -> bool {
 
 #[cfg(windows)]
 struct VolumeLease {
+    role: OutputRole,
     token: String,
     endpoint: String,
     scalar: f32,
@@ -283,6 +293,7 @@ impl Drop for VolumeComGuard {
 
 #[cfg(windows)]
 fn with_output_volume<T>(
+    role: OutputRole,
     operation: impl FnOnce(
         String,
         &windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume,
@@ -290,8 +301,8 @@ fn with_output_volume<T>(
 ) -> Result<T, String> {
     use windows::Win32::{
         Media::Audio::{
-            eMultimedia, eRender, Endpoints::IAudioEndpointVolume, IMMDeviceEnumerator,
-            MMDeviceEnumerator,
+            eCommunications, eConsole, eMultimedia, eRender, Endpoints::IAudioEndpointVolume,
+            IMMDeviceEnumerator, MMDeviceEnumerator,
         },
         System::Com::{
             CoCreateInstance, CoInitializeEx, CoTaskMemFree, CLSCTX_ALL, COINIT_MULTITHREADED,
@@ -305,8 +316,13 @@ fn with_output_volume<T>(
     let enumerator: IMMDeviceEnumerator =
         unsafe { CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL) }
             .map_err(|_| "Windows audio enumerator unavailable".to_owned())?;
-    let endpoint = unsafe { enumerator.GetDefaultAudioEndpoint(eRender, eMultimedia) }
-        .map_err(|_| "Default multimedia output unavailable".to_owned())?;
+    let native_role = match role {
+        OutputRole::Multimedia => eMultimedia,
+        OutputRole::Console => eConsole,
+        OutputRole::Communications => eCommunications,
+    };
+    let endpoint = unsafe { enumerator.GetDefaultAudioEndpoint(eRender, native_role) }
+        .map_err(|_| "Default output for the chosen role is unavailable".to_owned())?;
     let raw = unsafe { endpoint.GetId() }
         .map_err(|_| "Cannot identify current output endpoint".to_owned())?;
     if raw.is_null() {
@@ -325,6 +341,7 @@ fn with_output_volume<T>(
 
 #[cfg(windows)]
 fn volume_snapshot(
+    role: OutputRole,
     endpoint: String,
     volume: &windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume,
     lease: &mut Option<VolumeLease>,
@@ -339,6 +356,7 @@ fn volume_snapshot(
         .as_bool();
     let token = crate::new_id();
     *lease = Some(VolumeLease {
+        role,
         token: token.clone(),
         endpoint,
         scalar,
@@ -346,6 +364,7 @@ fn volume_snapshot(
         issued: std::time::Instant::now(),
     });
     Ok(OutputVolume {
+        role,
         token,
         percent: (scalar * 100.0).round() as u8,
         muted,
@@ -354,18 +373,28 @@ fn volume_snapshot(
 
 #[tauri::command]
 pub async fn get_default_output_volume() -> Result<OutputVolume, String> {
+    get_output_volume_for_role(OutputRole::Multimedia).await
+}
+
+#[tauri::command]
+pub async fn get_output_volume_for_role(role: OutputRole) -> Result<OutputVolume, String> {
     #[cfg(windows)]
     {
-        tauri::async_runtime::spawn_blocking(|| {
-            let mut lease = VOLUME_LEASE.lock().map_err(|_| "Audio state unavailable")?;
+        tauri::async_runtime::spawn_blocking(move || {
+            let mut lease = VOLUME_LEASE
+                .try_lock()
+                .map_err(|_| "Audio worker busy or unavailable")?;
             *lease = None;
-            with_output_volume(|endpoint, volume| volume_snapshot(endpoint, volume, &mut lease))
+            with_output_volume(role, |endpoint, volume| {
+                volume_snapshot(role, endpoint, volume, &mut lease)
+            })
         })
         .await
         .map_err(|_| "Audio volume worker failed".to_owned())?
     }
     #[cfg(not(windows))]
     {
+        let _ = role;
         Err("Output volume requires Windows".into())
     }
 }
@@ -382,12 +411,14 @@ pub async fn set_default_output_volume(
     #[cfg(windows)]
     {
         tauri::async_runtime::spawn_blocking(move || {
-            let mut lease = VOLUME_LEASE.lock().map_err(|_| "Audio state unavailable")?;
+            let mut lease = VOLUME_LEASE
+                .try_lock()
+                .map_err(|_| "Audio worker busy or unavailable")?;
             let selected = lease.take().ok_or("Read output volume again")?;
             if selected.token != token || selected.issued.elapsed().as_secs() >= 30 {
                 return Err("Audio snapshot expired; read again".into());
             }
-            with_output_volume(|endpoint, volume| {
+            with_output_volume(selected.role, |endpoint, volume| {
                 if endpoint != selected.endpoint {
                     return Err("Default output changed; read the new endpoint first".into());
                 }
@@ -408,7 +439,7 @@ pub async fn set_default_output_volume(
                     _ => return Err("Invalid output volume action".into()),
                 };
                 result.map_err(|_| "Windows rejected the output volume action".to_owned())?;
-                volume_snapshot(endpoint, volume, &mut lease).map_err(|_| {
+                volume_snapshot(selected.role, endpoint, volume, &mut lease).map_err(|_| {
                     "Volume action may have changed Windows; read the output again".to_owned()
                 })
             })
@@ -428,6 +459,11 @@ mod output_volume_tests {
 
     #[test]
     fn volume_change_is_single_action_and_bounded() {
+        assert_eq!(
+            serde_json::from_str::<OutputRole>("\"communications\"").unwrap(),
+            OutputRole::Communications
+        );
+        assert!(serde_json::from_str::<OutputRole>("\"capture\"").is_err());
         assert!(volume_state_matches(0.4, false, 0.4, false));
         assert!(!volume_state_matches(0.4, false, 0.5, false));
         assert!(!volume_state_matches(0.4, false, 0.4, true));

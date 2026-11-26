@@ -1,6 +1,37 @@
 //! Opt-in, read-only Windows Global System Media Transport Controls session snapshot.
 //! No microphone access, audio capture, files, credentials, or network calls.
 use serde::Serialize;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+static MEDIA_WORKER_BUSY: AtomicBool = AtomicBool::new(false);
+
+struct MediaWorkerGuard;
+
+impl MediaWorkerGuard {
+    fn acquire() -> Result<Self, String> {
+        MEDIA_WORKER_BUSY
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .map_err(|_| "Windows media worker busy; retry after current request".to_owned())?;
+        Ok(Self)
+    }
+}
+
+impl Drop for MediaWorkerGuard {
+    fn drop(&mut self) {
+        MEDIA_WORKER_BUSY.store(false, Ordering::Release);
+    }
+}
+
+async fn media_worker<T: Send + 'static>(
+    operation: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = MediaWorkerGuard::acquire()?;
+        operation()
+    })
+    .await
+    .map_err(|error| format!("Media worker failed: {error}"))?
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ActiveMediaSnapshot {
@@ -206,16 +237,12 @@ pub async fn get_media_session_by_source(
     if source.is_empty() || source.len() > 256 || source.chars().any(char::is_control) {
         return Err("Invalid media source".into());
     }
-    tauri::async_runtime::spawn_blocking(move || read_session_with_source(Some(&source)))
-        .await
-        .map_err(|error| format!("Media session worker failed: {error}"))?
+    media_worker(move || read_session_with_source(Some(&source))).await
 }
 
 #[tauri::command]
 pub async fn get_active_media_session() -> Result<Option<ActiveMediaSnapshot>, String> {
-    tauri::async_runtime::spawn_blocking(read_session)
-        .await
-        .map_err(|error| format!("Media session worker failed: {error}"))?
+    media_worker(read_session).await
 }
 
 #[cfg(test)]
@@ -403,9 +430,7 @@ fn read_media_choices() -> Result<Vec<MediaSessionChoice>, String> {
 
 #[tauri::command]
 pub async fn list_media_sessions() -> Result<Vec<MediaSessionChoice>, String> {
-    tauri::async_runtime::spawn_blocking(read_media_choices)
-        .await
-        .map_err(|error| format!("Media session worker failed: {error}"))?
+    media_worker(read_media_choices).await
 }
 
 #[cfg(windows)]
@@ -479,14 +504,21 @@ pub async fn control_media_session(source: String, action: String) -> Result<boo
     {
         return Err("Invalid media player or playback action".into());
     }
-    tauri::async_runtime::spawn_blocking(move || apply_media_control(&source, &action))
-        .await
-        .map_err(|error| format!("Media control worker failed: {error}"))?
+    media_worker(move || apply_media_control(&source, &action)).await
 }
 
 #[cfg(test)]
 mod phase10_tests {
     use super::*;
+    #[test]
+    fn media_worker_guard_releases_after_scope() {
+        {
+            let _guard = MediaWorkerGuard::acquire().unwrap();
+            assert!(MediaWorkerGuard::acquire().is_err());
+        }
+        assert!(MediaWorkerGuard::acquire().is_ok());
+    }
+
     #[test]
     fn media_actions_are_strictly_allowlisted() {
         assert!(valid_control("toggle"));
@@ -603,9 +635,7 @@ pub async fn seek_media_session(request: SeekRequest) -> Result<bool, String> {
     if !valid_seek_request(&request) {
         return Err("Invalid media seek request".into());
     }
-    tauri::async_runtime::spawn_blocking(move || apply_media_seek(&request))
-        .await
-        .map_err(|error| format!("Media seek worker failed: {error}"))?
+    media_worker(move || apply_media_seek(&request)).await
 }
 
 #[cfg(test)]

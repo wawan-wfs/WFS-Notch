@@ -55,6 +55,9 @@ function renderMediaDetails(snapshot) {
     ? Math.min(100, Math.max(0, 100 * p / d)).toFixed(1) + '%' : '0%';
   if(typeof wfs52RenderSeek==='function')wfs52RenderSeek();
 }
+function readMediaWithDeadline(command,args={}) {
+  return typeof deviceDeadline==='function'?deviceDeadline(()=>invoke(command,args),10000):invoke(command,args);
+}
 async function refreshMediaDetails(force = false) {
   if (!nativeInvoke) return;
   if (mediaDetailsPending) { if (force) mediaRefreshRequested = true; return; }
@@ -63,8 +66,9 @@ async function refreshMediaDetails(force = false) {
   if (!force && Date.now() - mediaDetailsLastAt < 5000) return;
   mediaDetailsPending = true;
   try {
-    const active = await invoke('get_active_media_session');
-    const sessions = await invoke('list_media_sessions');
+    const active = await readMediaWithDeadline('get_active_media_session');
+    const sessions = await readMediaWithDeadline('list_media_sessions');
+    if(!panel.classList.contains('active'))return;
     renderSelectedPlayers(sessions, active?.source);
     const picker = document.querySelector('#media-player-picker');
     const selected = picker.value;
@@ -78,7 +82,7 @@ async function refreshMediaDetails(force = false) {
       return;
     }
     const snapshot = selected && selected !== active?.source
-      ? await invoke('get_media_session_by_source', { source: selected }) : active;
+      ? await readMediaWithDeadline('get_media_session_by_source', { source: selected }) : active;
     if (!panel.classList.contains('active') || picker.value !== selected) return;
     if (selected && (!snapshot || snapshot.source !== selected)) {
       mediaNeedsSelection = true;

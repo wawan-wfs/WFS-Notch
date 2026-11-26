@@ -1,5 +1,10 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Integrated continuation — output roles and bounded media workers
+
+- Choose the default Windows output role (multimedia, console, communications) for explicit readback, volume and mute. Short-lived leases bind to the actual role and endpoint; changes outside WFS invalidate the lease. No default-device switching, capture access or raw identifiers.
+- Bound WinRT media read wait in UI and serialize native media operations with a fail-fast worker guard, without applying UI timeouts to playback mutations. 3 new role guard assertions passed.
+
 ## Integrated continuation — atomic scheduling and durable recovery tests
 
 - Bulk deadline set/clear with shared optimistic selection validation, refusal of recurring tasks, preservation of priority and all-or-nothing application. No automatic changes to schedules.

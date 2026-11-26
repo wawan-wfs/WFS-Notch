@@ -2765,6 +2765,7 @@ fn main() {
             system_details::get_device_diagnostics,
             system_details::get_audio_inventory,
             system_details::get_default_output_volume,
+            system_details::get_output_volume_for_role,
             system_details::set_default_output_volume,
             media_sessions::get_active_media_session,
             media_sessions::get_media_session_by_source,
@@ -2855,7 +2856,6 @@ mod tests {
         let safety = backup_path(&store, &result.safety_backup.id).unwrap();
         assert!(read_state(&safety).unwrap().settings.pin_open);
         assert_eq!(reviewed_backup_bytes(&store, &backup.id).unwrap(), bytes);
-        drop(store);
         let _ = fs::remove_dir_all(dir);
     }
 
@@ -2890,19 +2890,10 @@ mod tests {
     fn restore_review_detects_state_and_backup_changes() {
         let mut state = AppData::default();
         let token = restore_fingerprint("backup", b"old", &state).unwrap();
-        assert_eq!(
-            token,
-            restore_fingerprint("backup", b"old", &state).unwrap()
-        );
-        assert_ne!(
-            token,
-            restore_fingerprint("backup", b"new", &state).unwrap()
-        );
+        assert_eq!(token, restore_fingerprint("backup", b"old", &state).unwrap());
+        assert_ne!(token, restore_fingerprint("backup", b"new", &state).unwrap());
         state.settings.pin_open = true;
-        assert_ne!(
-            token,
-            restore_fingerprint("backup", b"old", &state).unwrap()
-        );
+        assert_ne!(token, restore_fingerprint("backup", b"old", &state).unwrap());
         let delta = restore_delta(["a", "b"].into_iter(), ["b", "c"].into_iter());
         assert_eq!(
             delta,
