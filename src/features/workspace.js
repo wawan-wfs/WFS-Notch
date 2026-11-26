@@ -94,6 +94,7 @@ function renderActivity() {
   const source=typeof plannerActivityWindow==='function'?plannerActivityWindow(activityRows,windowMode,Date.now()):activityRows;
   const rows=source.filter(row=>($('#activity-kind').value==='all'||row.kind===$('#activity-kind').value)&&
     ($('#activity-outcome').value==='all'||row.outcome===$('#activity-outcome').value));
+  if(typeof wfs52RenderActivityExport==='function')wfs52RenderActivityExport(rows);
   const list=$('#activity-list');list.replaceChildren();
   const summary=$('#phase48-activity-summary');
   if(summary&&typeof phase48ActivitySummary==='function') {const counts=phase48ActivitySummary(rows);summary.textContent=counts.enqueue_accepted+' accepted · '+counts.retry_scheduled+' retries · '+counts.retry_exhausted+' exhausted (shown entries)';}
@@ -108,6 +109,7 @@ function renderActivity() {
 async function readActivity(reader=nativeInvoke?()=>invoke('get_notification_activity'):null) {
   const ticket=++activityRequest, status=$('#activity-status');
   activityRows=[];activitySnapshotAvailable=false;$('#activity-list').replaceChildren();$('#activity-clear').disabled=true;
+  if(typeof wfs52RenderActivityExport==='function')wfs52RenderActivityExport([]);
   const summary=$('#phase48-activity-summary');if(summary)summary.textContent='No activity snapshot available.';
   if (!reader) {status.textContent='Requires the installed Windows app.';return;}
   $('#activity-read').disabled=true; status.textContent='Reading local activity…';

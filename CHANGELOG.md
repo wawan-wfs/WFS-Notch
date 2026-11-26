@@ -1,5 +1,13 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Integrated batch — native control and transactional workspaces
+
+- Phase 51 baseline run 45758871969: all jobs passed, 123 Rust tests and 80 matrix screenshots.
+- Native seek via WinRT with current track, source uniqueness, capability and absolute timeline bounds checks; explicit apply.
+- Atomic selected open-task priority updates in Rust and preview, stale selection rejection, no schedule changes.
+- Shelf JSON metadata preview/import, deduplication, stale review guard, native Sound and Notification Settings launch, title-free notification CSV.
+- 25 model assertions passed locally. Candidate Rust/full browser acceptance pending. No intermediate CI push.
+
 ## Phase 51 — v0.45.0 candidate
 
 - Phase 50 automatic CI run 45757846175: all jobs PASS, 122 Rust tests, 18 new full browser workbench assertions and 80 screenshot matrix. Four ZIP and two EXE hashes independently checked.

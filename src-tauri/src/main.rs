@@ -1050,6 +1050,60 @@ fn update_todo(
     })
 }
 
+#[derive(Debug, Deserialize)]
+struct TaskPriorityChange {
+    id: String,
+    expected_token: Option<String>,
+    expected_due_at_ms: Option<u64>,
+}
+
+fn apply_task_priorities(
+    state: &mut AppData,
+    changes: &[TaskPriorityChange],
+    priority: &str,
+) -> Result<(), String> {
+    if changes.is_empty()
+        || changes.len() > 50
+        || !matches!(priority, "low" | "normal" | "high")
+    {
+        return Err("Choose 1–50 open tasks and a supported priority".into());
+    }
+    let mut seen = HashSet::new();
+    // Validate the entire selection before changing any task.
+    for change in changes {
+        if !seen.insert(&change.id) {
+            return Err("Duplicate task in priority selection".into());
+        }
+        let todo = state
+            .todos
+            .iter()
+            .find(|todo| todo.id == change.id)
+            .ok_or("Selected task no longer exists")?;
+        if todo.done
+            || todo.change_token != change.expected_token
+            || todo.due_at_ms != change.expected_due_at_ms
+        {
+            return Err("Task selection changed; review it again".into());
+        }
+    }
+    for todo in &mut state.todos {
+        if seen.contains(&todo.id) && todo.priority != priority {
+            todo.priority = priority.to_owned();
+            todo.change_token = Some(new_id());
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn set_task_priorities(
+    store: State<'_, Mutex<Store>>,
+    changes: Vec<TaskPriorityChange>,
+    priority: String,
+) -> Result<AppData, String> {
+    with_store(store, |state| apply_task_priorities(state, &changes, &priority))
+}
+
 #[tauri::command]
 fn toggle_todo(
     store: State<'_, Mutex<Store>>,
@@ -2468,6 +2522,7 @@ fn main() {
             load_data,
             add_todo,
             update_todo,
+            set_task_priorities,
             toggle_todo,
             undo_task_completion,
             set_task_history_limit,
@@ -2504,6 +2559,7 @@ fn main() {
             media_sessions::get_media_session_by_source,
             media_sessions::list_media_sessions,
             media_sessions::control_media_session,
+            media_sessions::seek_media_session,
             notifications::set_notification_preferences,
             notifications::set_notifications_paused,
             notifications::set_task_due_reminders,
@@ -2561,6 +2617,37 @@ mod tests {
             std::process::id(),
             new_id()
         ))
+    }
+
+    #[test]
+    fn bulk_priority_is_atomic_and_preserves_deadlines() {
+        let mut state = AppData::default();
+        let task: Todo = serde_json::from_value(serde_json::json!({
+            "id": "one", "title": "Task", "done": false, "created_ms": 1,
+            "priority": "normal", "due_at_ms": 1_800_000_000_000_u64
+        }))
+        .unwrap();
+        state.todos.push(task);
+        let before = state.clone();
+        let changes = vec![
+            TaskPriorityChange {
+                id: "one".into(),
+                expected_token: None,
+                expected_due_at_ms: Some(1_800_000_000_000),
+            },
+            TaskPriorityChange {
+                id: "missing".into(),
+                expected_token: None,
+                expected_due_at_ms: None,
+            },
+        ];
+        assert!(apply_task_priorities(&mut state, &changes, "high").is_err());
+        assert_eq!(state, before);
+        apply_task_priorities(&mut state, &changes[..1], "high").unwrap();
+        assert_eq!(state.todos[0].priority, "high");
+        assert_eq!(state.todos[0].due_at_ms, before.todos[0].due_at_ms);
+        assert!(state.todos[0].change_token.is_some());
+        assert!(apply_task_priorities(&mut state, &changes[..1], "low").is_err());
     }
 
     #[test]

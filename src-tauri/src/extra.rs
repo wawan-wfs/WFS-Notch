@@ -209,6 +209,8 @@ pub fn launch_builtin(app_name: String) -> Result<(), String> {
             "explorer" => ("explorer.exe", None),
             "paint" => ("mspaint.exe", None),
             "settings" => ("explorer.exe", Some("ms-settings:")),
+            "sound_settings" => ("explorer.exe", Some("ms-settings:sound")),
+            "notification_settings" => ("explorer.exe", Some("ms-settings:notifications")),
             _ => return Err("Unknown built-in Windows app".into()),
         };
         let mut cmd = Command::new(program);

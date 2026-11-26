@@ -302,6 +302,11 @@ function previewInvoke(command, args = {}) {
         change_token:newTaskToken() });
       break;
     }
+    case 'set_task_priorities': {
+      const next = wfs52TaskPlan(state.todos, args.changes, args.priority);
+      state.todos = next.map((task, index) => task === state.todos[index] ? task : {...task,change_token:newTaskToken()});
+      break;
+    }
     case 'toggle_todo': {
       const todo = state.todos.find(item => item.id === args.id);
       if (!todo) throw new Error('Task not found');
@@ -1257,6 +1262,7 @@ function render() {
   if (typeof phase47RenderPolicy === 'function') phase47RenderPolicy();
   if (typeof wfs50RenderSearch === 'function') wfs50RenderSearch();
   if (typeof wfs50RenderGaps === 'function') wfs50RenderGaps();
+  if (typeof wfs52RenderTasks === 'function') wfs52RenderTasks();
 }
 
 async function saveRevisionNote(draft) {

@@ -324,6 +324,7 @@ function renderShelf(focusIndex = null) {
   $('#shelf-remove-shown').disabled = !visible.length;
   $('#shelf-copy-names').disabled = !visible.length;
   if($('#phase50-shelf-copy'))$('#phase50-shelf-copy').disabled=!visible.length;
+  if(typeof wfs52InvalidateShelf==='function')wfs52InvalidateShelf();
   if (!visible.length) list.append(node('div','empty',shelfEntries.length ? 'No matching files.' : 'Shelf is empty.'));
   visible.forEach(({item,index},position) => {
     const line = node('div','module-item');

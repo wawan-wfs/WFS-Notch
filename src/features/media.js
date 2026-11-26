@@ -35,6 +35,7 @@ function renderMediaDetails(snapshot) {
     artwork.hidden = true;
     artwork.removeAttribute('src');
     card.classList.remove('has-art');
+    if(typeof wfs52RenderSeek==='function')wfs52RenderSeek();
     return;
   }
   const url = snapshot.artwork_data_url;
@@ -52,6 +53,7 @@ function renderMediaDetails(snapshot) {
   const p = Number(snapshot.position_ms), d = Number(snapshot.duration_ms);
   bar.style.width = Number.isFinite(p) && Number.isFinite(d) && d > 0
     ? Math.min(100, Math.max(0, 100 * p / d)).toFixed(1) + '%' : '0%';
+  if(typeof wfs52RenderSeek==='function')wfs52RenderSeek();
 }
 async function refreshMediaDetails(force = false) {
   if (!nativeInvoke) return;
@@ -232,6 +234,7 @@ function initMediaSessions() {
   }
   setInterval(() => { void refreshMediaDetails(); }, 2500);
   setInterval(updateInterpolatedProgress, 500);
+  setInterval(()=>{if(typeof wfs52RenderSeek==='function')wfs52RenderSeek();},1000);
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initMediaSessions, {once:true});
 else initMediaSessions();

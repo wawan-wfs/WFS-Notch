@@ -279,6 +279,7 @@ pub struct MediaSessionChoice {
     can_toggle: bool,
     can_next: bool,
     can_previous: bool,
+    can_seek: bool,
     // An AUMID can represent several tabs/instances. No action may guess
     // which instance should receive a command.
     ambiguous: bool,
@@ -320,6 +321,7 @@ fn read_media_choices() -> Result<Vec<MediaSessionChoice>, String> {
             existing.can_toggle = false;
             existing.can_next = false;
             existing.can_previous = false;
+            existing.can_seek = false;
             continue;
         }
         let properties = session
@@ -371,6 +373,10 @@ fn read_media_choices() -> Result<Vec<MediaSessionChoice>, String> {
             can_previous: controls
                 .as_ref()
                 .and_then(|c| c.IsPreviousEnabled().ok())
+                .unwrap_or(false),
+            can_seek: controls
+                .as_ref()
+                .and_then(|c| c.IsPlaybackPositionEnabled().ok())
                 .unwrap_or(false),
             ambiguous: false,
         });
@@ -472,5 +478,141 @@ mod phase10_tests {
         assert!(valid_control("previous"));
         assert!(!valid_control("record"));
         assert!(!valid_control("delete"));
+    }
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct SeekRequest {
+    source: String,
+    title: String,
+    artist: String,
+    album: String,
+    duration_ms: u64,
+    position_ms: u64,
+}
+
+// Convert a relative displayed position into the absolute Windows timeline ticks.
+// Never guess a seekable range for live/unknown streams.
+fn seek_ticks(start: i64, end: i64, min: i64, max: i64, request: &SeekRequest) -> Option<i64> {
+    let duration = end.checked_sub(start)?;
+    if duration <= 0
+        || non_negative_ms(duration) != request.duration_ms
+        || request.position_ms > request.duration_ms
+        || min >= max
+    {
+        return None;
+    }
+    let relative = i64::try_from(request.position_ms).ok()?.checked_mul(10_000)?;
+    let target = start.checked_add(relative)?;
+    (target >= start && target <= end && target >= min && target <= max).then_some(target)
+}
+
+fn valid_seek_request(r: &SeekRequest) -> bool {
+    !r.source.is_empty()
+        && r.source.len() <= 256
+        && !r.source.chars().any(char::is_control)
+        && !r.title.trim().is_empty()
+        && [&r.title, &r.artist, &r.album]
+            .iter()
+            .all(|s| s.len() <= 4096)
+        && (1..=604_800_000).contains(&r.duration_ms)
+        && r.position_ms <= r.duration_ms
+}
+
+#[cfg(windows)]
+fn apply_media_seek(request: &SeekRequest) -> Result<bool, String> {
+    use windows::Media::Control::GlobalSystemMediaTransportControlsSessionManager as MediaManager;
+    let manager = MediaManager::RequestAsync()
+        .and_then(|operation| operation.join())
+        .map_err(|e| e.to_string())?;
+    let sessions = manager.GetSessions().map_err(|e| e.to_string())?;
+    let count = sessions.Size().map_err(|e| e.to_string())?;
+    if count > 64 {
+        return Err("Too many Windows sessions to seek safely".into());
+    }
+    let mut candidates = Vec::new();
+    for index in 0..count {
+        let session = sessions.GetAt(index).map_err(|e| e.to_string())?;
+        let source = session.SourceAppUserModelId().map_err(|e| e.to_string())?;
+        candidates.push((source.to_string(), session));
+    }
+    let session = select_unique_source(&request.source, candidates)?
+        .ok_or("Selected media session disconnected")?;
+    let props = session
+        .TryGetMediaPropertiesAsync()
+        .and_then(|operation| operation.join())
+        .map_err(|e| e.to_string())?;
+    if props.Title().map_err(|e| e.to_string())?.to_string() != request.title
+        || props.Artist().map_err(|e| e.to_string())?.to_string() != request.artist
+        || props.AlbumTitle().map_err(|e| e.to_string())?.to_string() != request.album
+    {
+        return Err("Media changed; refresh before seeking".into());
+    }
+    let controls = session
+        .GetPlaybackInfo()
+        .and_then(|info| info.Controls())
+        .map_err(|e| e.to_string())?;
+    if !controls.IsPlaybackPositionEnabled().map_err(|e| e.to_string())? {
+        return Ok(false);
+    }
+    let timeline = session.GetTimelineProperties().map_err(|e| e.to_string())?;
+    let target = seek_ticks(
+        timeline.StartTime().map_err(|e| e.to_string())?.Duration,
+        timeline.EndTime().map_err(|e| e.to_string())?.Duration,
+        timeline.MinSeekTime().map_err(|e| e.to_string())?.Duration,
+        timeline.MaxSeekTime().map_err(|e| e.to_string())?.Duration,
+        request,
+    )
+    .ok_or("Playback timeline changed or position is not seekable")?;
+    session
+        .TryChangePlaybackPositionAsync(target)
+        .and_then(|operation| operation.join())
+        .map_err(|e| e.to_string())
+}
+
+#[cfg(not(windows))]
+fn apply_media_seek(_request: &SeekRequest) -> Result<bool, String> {
+    Err("Media seeking requires Windows".into())
+}
+
+#[tauri::command]
+pub async fn seek_media_session(request: SeekRequest) -> Result<bool, String> {
+    if !valid_seek_request(&request) {
+        return Err("Invalid media seek request".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || apply_media_seek(&request))
+        .await
+        .map_err(|error| format!("Media seek worker failed: {error}"))?
+}
+
+#[cfg(test)]
+mod seek_tests {
+    use super::*;
+
+    #[test]
+    fn seek_checks_offset_bounds_and_stale_duration() {
+        let mut request = SeekRequest {
+            source: "player".into(),
+            title: "Track".into(),
+            artist: "Artist".into(),
+            album: String::new(),
+            duration_ms: 100,
+            position_ms: 50,
+        };
+        assert!(valid_seek_request(&request));
+        assert_eq!(
+            seek_ticks(100_000, 1_100_000, 100_000, 1_100_000, &request),
+            Some(600_000)
+        );
+        assert_eq!(
+            seek_ticks(100_000, 1_100_000, 700_000, 1_100_000, &request),
+            None
+        );
+        assert_eq!(
+            seek_ticks(100_000, 1_200_000, 100_000, 1_200_000, &request),
+            None
+        );
+        request.position_ms = 101;
+        assert!(!valid_seek_request(&request));
     }
 }
