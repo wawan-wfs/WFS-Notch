@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     fs::{self, File},
-    io::Write,
+    io::{Read, Write},
     path::{Path, PathBuf},
     sync::Mutex,
     time::{SystemTime, UNIX_EPOCH},
@@ -805,14 +805,26 @@ fn new_id() -> String {
     )
 }
 
-fn read_state(path: &Path) -> Result<AppData, String> {
-    // Limit malformed/hostile oversized state files from exhausting memory.
-    let metadata = fs::metadata(path).map_err(|error| error.to_string())?;
-    if metadata.len() > 32 * 1024 * 1024 {
+const MAX_STATE_BYTES: u64 = 32 * 1024 * 1024;
+
+fn read_state_bytes(path: &Path) -> Result<Vec<u8>, String> {
+    let file = File::open(path).map_err(|error| error.to_string())?;
+    if file.metadata().map_err(|error| error.to_string())?.len() > MAX_STATE_BYTES {
         return Err("State file exceeds the 32 MB safety limit".into());
     }
-    let content = fs::read(path).map_err(|error| error.to_string())?;
-    serde_json::from_slice(&content).map_err(|error| format!("Invalid state file: {error}"))
+    let mut content = Vec::new();
+    file.take(MAX_STATE_BYTES + 1)
+        .read_to_end(&mut content)
+        .map_err(|error| error.to_string())?;
+    if content.len() as u64 > MAX_STATE_BYTES {
+        return Err("State file exceeds the 32 MB safety limit".into());
+    }
+    Ok(content)
+}
+
+fn read_state(path: &Path) -> Result<AppData, String> {
+    serde_json::from_slice(&read_state_bytes(path)?)
+        .map_err(|error| format!("Invalid state file: {error}"))
 }
 
 /// Find the newest readable local recovery generation without mutating any files.
@@ -1103,7 +1115,9 @@ fn set_task_priorities(
     changes: Vec<TaskPriorityChange>,
     priority: String,
 ) -> Result<AppData, String> {
-    with_store(store, |state| apply_task_priorities(state, &changes, &priority))
+    with_store(store, |state| {
+        apply_task_priorities(state, &changes, &priority)
+    })
 }
 
 #[tauri::command]
@@ -2123,13 +2137,20 @@ fn create_backup(store: State<'_, Mutex<Store>>) -> Result<BackupInfo, String> {
     let locked = store
         .lock()
         .map_err(|_| "Storage lock poisoned".to_owned())?;
+    create_backup_locked(&locked)
+}
+
+fn create_backup_locked(locked: &Store) -> Result<BackupInfo, String> {
     let id = format!("backup-{}-{}.json", now_ms(), new_id().replace('-', ""));
-    let path = backup_path(&locked, &id)?;
+    let path = backup_path(locked, &id)?;
     fs::create_dir_all(path.parent().ok_or("Invalid backup directory")?)
         .map_err(|e| e.to_string())?;
     let mut snapshot = locked.data.clone();
     reset_recovered_activity(&mut snapshot);
     let content = serde_json::to_vec_pretty(&snapshot).map_err(|e| e.to_string())?;
+    if content.len() as u64 > MAX_STATE_BYTES {
+        return Err("Backup exceeds the 32 MB safety limit".into());
+    }
     // Do not overwrite existing backups, even if timestamps collide.
     let mut file = File::options()
         .write(true)
@@ -2261,18 +2282,145 @@ fn preserve_note_revisions(recovered: &mut AppData, existing: &AppData) -> Resul
     Ok(())
 }
 
+fn prepare_restore(mut recovered: AppData, current: &AppData) -> Result<AppData, String> {
+    recovered.sanitize();
+    preserve_reminder_history(&mut recovered, current);
+    restore_task_history(&mut recovered, current, now_ms());
+    calendar_ics::preserve_cancellation_history(&mut recovered, current)?;
+    preserve_note_revisions(&mut recovered, current)?;
+    Ok(recovered)
+}
+
+#[derive(Debug, Serialize, PartialEq, Eq)]
+struct RestoreDelta {
+    before: usize,
+    after: usize,
+    added: usize,
+    removed: usize,
+}
+
+fn restore_delta<'a>(
+    before: impl Iterator<Item = &'a str>,
+    after: impl Iterator<Item = &'a str>,
+) -> RestoreDelta {
+    let before: HashSet<_> = before.collect();
+    let after: HashSet<_> = after.collect();
+    RestoreDelta {
+        before: before.len(),
+        after: after.len(),
+        added: after.difference(&before).count(),
+        removed: before.difference(&after).count(),
+    }
+}
+
+#[derive(Serialize)]
+struct RestoreReview {
+    token: String,
+    tasks: RestoreDelta,
+    notes: RestoreDelta,
+    events: RestoreDelta,
+    habits: RestoreDelta,
+    links: RestoreDelta,
+}
+
+// Optimistic stale-review fingerprint, not a credential or cryptographic proof.
+fn restore_fingerprint(id: &str, bytes: &[u8], current: &AppData) -> Result<String, String> {
+    use std::hash::{DefaultHasher, Hash, Hasher};
+    let mut hash = DefaultHasher::new();
+    id.hash(&mut hash);
+    bytes.hash(&mut hash);
+    serde_json::to_vec(current)
+        .map_err(|e| e.to_string())?
+        .hash(&mut hash);
+    Ok(format!("{:016x}", hash.finish()))
+}
+
+fn reviewed_backup_bytes(store: &Store, id: &str) -> Result<Vec<u8>, String> {
+    let path = backup_path(store, id)?;
+    if !fs::symlink_metadata(&path)
+        .map_err(|e| e.to_string())?
+        .file_type()
+        .is_file()
+    {
+        return Err("Backup must be a regular local file".into());
+    }
+    read_state_bytes(&path)
+}
+
+#[tauri::command]
+fn preview_backup_restore(
+    store: State<'_, Mutex<Store>>,
+    id: String,
+) -> Result<RestoreReview, String> {
+    let locked = store.lock().map_err(|_| "Storage lock poisoned")?;
+    let bytes = reviewed_backup_bytes(&locked, &id)?;
+    let token = restore_fingerprint(&id, &bytes, &locked.data)?;
+    let snapshot = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+    let after = prepare_restore(snapshot, &locked.data)?;
+    let before = &locked.data;
+    Ok(RestoreReview {
+        token,
+        tasks: restore_delta(
+            before.todos.iter().map(|x| x.id.as_str()),
+            after.todos.iter().map(|x| x.id.as_str()),
+        ),
+        notes: restore_delta(
+            before.notes.iter().map(|x| x.id.as_str()),
+            after.notes.iter().map(|x| x.id.as_str()),
+        ),
+        events: restore_delta(
+            before.events.iter().map(|x| x.id.as_str()),
+            after.events.iter().map(|x| x.id.as_str()),
+        ),
+        habits: restore_delta(
+            before.habits.iter().map(|x| x.id.as_str()),
+            after.habits.iter().map(|x| x.id.as_str()),
+        ),
+        links: restore_delta(
+            before.quick_links.iter().map(|x| x.id.as_str()),
+            after.quick_links.iter().map(|x| x.id.as_str()),
+        ),
+    })
+}
+
+#[derive(Serialize)]
+struct ReviewedRestoreResult {
+    data: AppData,
+    safety_backup: BackupInfo,
+}
+
+#[tauri::command]
+fn restore_backup_reviewed(
+    store: State<'_, Mutex<Store>>,
+    id: String,
+    token: String,
+) -> Result<ReviewedRestoreResult, String> {
+    let mut locked = store.lock().map_err(|_| "Storage lock poisoned")?;
+    let bytes = reviewed_backup_bytes(&locked, &id)?;
+    if token != restore_fingerprint(&id, &bytes, &locked.data)? {
+        return Err("Backup or local state changed; review again".into());
+    }
+    let snapshot = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+    let recovered = prepare_restore(snapshot, &locked.data)?;
+    // A separate durable manual backup must succeed before changing primary data.
+    let safety_backup = create_backup_locked(&locked)?;
+    let data = locked.transact(|state| {
+        *state = recovered;
+        Ok(())
+    })?;
+    Ok(ReviewedRestoreResult {
+        data,
+        safety_backup,
+    })
+}
+
 #[tauri::command]
 fn restore_backup(store: State<'_, Mutex<Store>>, id: String) -> Result<AppData, String> {
     let mut locked = store
         .lock()
         .map_err(|_| "Storage lock poisoned".to_owned())?;
     let path = backup_path(&locked, &id)?;
-    let mut recovered = read_state(&path)?;
-    recovered.sanitize();
-    preserve_reminder_history(&mut recovered, &locked.data);
-    restore_task_history(&mut recovered, &locked.data, now_ms());
-    calendar_ics::preserve_cancellation_history(&mut recovered, &locked.data)?;
-    preserve_note_revisions(&mut recovered, &locked.data)?;
+    let recovered = prepare_restore(read_state(&path)?, &locked.data)?;
     // Restore is transactional and retains the previous state as state.json.bak.
     locked.transact(|state| {
         *state = recovered;
@@ -2553,6 +2701,8 @@ fn main() {
             create_backup,
             list_backups,
             restore_backup,
+            preview_backup_restore,
+            restore_backup_reviewed,
             get_system_snapshot,
             system_details::get_system_details,
             system_details::get_device_diagnostics,
@@ -2624,6 +2774,35 @@ mod tests {
             std::process::id(),
             new_id()
         ))
+    }
+
+    #[test]
+    fn restore_review_detects_state_and_backup_changes() {
+        let mut state = AppData::default();
+        let token = restore_fingerprint("backup", b"old", &state).unwrap();
+        assert_eq!(
+            token,
+            restore_fingerprint("backup", b"old", &state).unwrap()
+        );
+        assert_ne!(
+            token,
+            restore_fingerprint("backup", b"new", &state).unwrap()
+        );
+        state.settings.pin_open = true;
+        assert_ne!(
+            token,
+            restore_fingerprint("backup", b"old", &state).unwrap()
+        );
+        let delta = restore_delta(["a", "b"].into_iter(), ["b", "c"].into_iter());
+        assert_eq!(
+            delta,
+            RestoreDelta {
+                before: 2,
+                after: 2,
+                added: 1,
+                removed: 1,
+            }
+        );
     }
 
     #[test]

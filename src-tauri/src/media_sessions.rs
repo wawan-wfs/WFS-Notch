@@ -277,6 +277,8 @@ pub struct MediaSessionChoice {
     artist: String,
     playback_status: String,
     can_toggle: bool,
+    can_play: bool,
+    can_pause: bool,
     can_next: bool,
     can_previous: bool,
     can_seek: bool,
@@ -286,7 +288,7 @@ pub struct MediaSessionChoice {
 }
 
 fn valid_control(action: &str) -> bool {
-    matches!(action, "toggle" | "next" | "previous")
+    matches!(action, "toggle" | "play" | "pause" | "next" | "previous")
 }
 
 #[cfg(windows)]
@@ -319,6 +321,8 @@ fn read_media_choices() -> Result<Vec<MediaSessionChoice>, String> {
         if let Some(existing) = result.iter_mut().find(|item| item.source == source) {
             existing.ambiguous = true;
             existing.can_toggle = false;
+            existing.can_play = false;
+            existing.can_pause = false;
             existing.can_next = false;
             existing.can_previous = false;
             existing.can_seek = false;
@@ -365,6 +369,14 @@ fn read_media_choices() -> Result<Vec<MediaSessionChoice>, String> {
             can_toggle: controls
                 .as_ref()
                 .and_then(|c| c.IsPlayPauseToggleEnabled().ok())
+                .unwrap_or(false),
+            can_play: controls
+                .as_ref()
+                .and_then(|c| c.IsPlayEnabled().ok())
+                .unwrap_or(false),
+            can_pause: controls
+                .as_ref()
+                .and_then(|c| c.IsPauseEnabled().ok())
                 .unwrap_or(false),
             can_next: controls
                 .as_ref()
@@ -430,6 +442,8 @@ fn apply_media_control(source: &str, action: &str) -> Result<bool, String> {
         "toggle" => controls
             .as_ref()
             .and_then(|c| c.IsPlayPauseToggleEnabled().ok()),
+        "play" => controls.as_ref().and_then(|c| c.IsPlayEnabled().ok()),
+        "pause" => controls.as_ref().and_then(|c| c.IsPauseEnabled().ok()),
         "next" => controls.as_ref().and_then(|c| c.IsNextEnabled().ok()),
         "previous" => controls.as_ref().and_then(|c| c.IsPreviousEnabled().ok()),
         _ => None,
@@ -439,6 +453,8 @@ fn apply_media_control(source: &str, action: &str) -> Result<bool, String> {
     }
     let operation = match action {
         "toggle" => session.TryTogglePlayPauseAsync(),
+        "play" => session.TryPlayAsync(),
+        "pause" => session.TryPauseAsync(),
         "next" => session.TrySkipNextAsync(),
         "previous" => session.TrySkipPreviousAsync(),
         _ => return Err("Unsupported media action".into()),
@@ -474,6 +490,8 @@ mod phase10_tests {
     #[test]
     fn media_actions_are_strictly_allowlisted() {
         assert!(valid_control("toggle"));
+        assert!(valid_control("play"));
+        assert!(valid_control("pause"));
         assert!(valid_control("next"));
         assert!(valid_control("previous"));
         assert!(!valid_control("record"));
@@ -502,7 +520,9 @@ fn seek_ticks(start: i64, end: i64, min: i64, max: i64, request: &SeekRequest) -
     {
         return None;
     }
-    let relative = i64::try_from(request.position_ms).ok()?.checked_mul(10_000)?;
+    let relative = i64::try_from(request.position_ms)
+        .ok()?
+        .checked_mul(10_000)?;
     let target = start.checked_add(relative)?;
     (target >= start && target <= end && target >= min && target <= max).then_some(target)
 }
@@ -542,9 +562,9 @@ fn apply_media_seek(request: &SeekRequest) -> Result<bool, String> {
         .TryGetMediaPropertiesAsync()
         .and_then(|operation| operation.join())
         .map_err(|e| e.to_string())?;
-    if props.Title().map_err(|e| e.to_string())?.to_string() != request.title
-        || props.Artist().map_err(|e| e.to_string())?.to_string() != request.artist
-        || props.AlbumTitle().map_err(|e| e.to_string())?.to_string() != request.album
+    if props.Title().map_err(|e| e.to_string())? != request.title
+        || props.Artist().map_err(|e| e.to_string())? != request.artist
+        || props.AlbumTitle().map_err(|e| e.to_string())? != request.album
     {
         return Err("Media changed; refresh before seeking".into());
     }
@@ -552,7 +572,10 @@ fn apply_media_seek(request: &SeekRequest) -> Result<bool, String> {
         .GetPlaybackInfo()
         .and_then(|info| info.Controls())
         .map_err(|e| e.to_string())?;
-    if !controls.IsPlaybackPositionEnabled().map_err(|e| e.to_string())? {
+    if !controls
+        .IsPlaybackPositionEnabled()
+        .map_err(|e| e.to_string())?
+    {
         return Ok(false);
     }
     let timeline = session.GetTimelineProperties().map_err(|e| e.to_string())?;

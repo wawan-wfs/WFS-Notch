@@ -122,6 +122,9 @@ function updateInterpolatedProgress() {
     Math.max(0, Math.min(100, 100 * position / duration)).toFixed(1) + '%';
 }
 
+function selectedMediaFlag(action) {
+  return ['toggle','play','pause','next','previous'].includes(action) ? 'can_'+action : null;
+}
 function renderSelectedPlayers(sessions, systemCurrentSource) {
   const picker = document.querySelector('#media-player-picker');
   const status = document.querySelector('#media-player-status');
@@ -165,8 +168,7 @@ function renderSelectedPlayers(sessions, systemCurrentSource) {
   const chosen = safe.find(item => item.source === picker.value);
   for (const button of document.querySelectorAll('[data-selected-media]')) {
     const action = button.dataset.selectedMedia;
-    const flag = action === 'toggle' ? 'can_toggle'
-      : action === 'next' ? 'can_next' : 'can_previous';
+    const flag = selectedMediaFlag(action);
     button.disabled = mediaControlPending || picker.disabled || !chosen || chosen.ambiguous === true || chosen[flag] !== true;
   }
 }
@@ -180,7 +182,7 @@ async function controlSelectedPlayer(action) {
     status.textContent = 'Control refused: choose a uniquely identifiable Windows media session.';
     return;
   }
-  const flag = action === 'toggle' ? 'can_toggle' : action === 'next' ? 'can_next' : action === 'previous' ? 'can_previous' : null;
+  const flag = selectedMediaFlag(action);
   if (!flag || selected[flag] !== true) { status.textContent = 'This action is not supported by the selected player.'; return; }
   mediaControlPending = true;
   for (const button of document.querySelectorAll('[data-selected-media]')) button.disabled = true;
@@ -200,8 +202,7 @@ async function controlSelectedPlayer(action) {
     // Do not re-enable controls unsupported by the current player.
     const snapshot = mediaSessionChoices.find(item => item.source === picker.value);
     for (const button of document.querySelectorAll('[data-selected-media]')) {
-      const flag = button.dataset.selectedMedia === 'toggle' ? 'can_toggle'
-        : button.dataset.selectedMedia === 'next' ? 'can_next' : 'can_previous';
+      const flag = selectedMediaFlag(button.dataset.selectedMedia);
       button.disabled = picker.disabled || !snapshot || snapshot.ambiguous === true || snapshot[flag] !== true;
     }
   }

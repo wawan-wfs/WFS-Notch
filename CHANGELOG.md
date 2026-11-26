@@ -1,5 +1,12 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Integrated continuation — recovery and native controls
+
+- Correct all three cmp_owned diagnostics and four rustfmt differences from run 45762624955 without suppressing lints.
+- Add explicit capability-checked Windows play and pause, reject stale external output volume/mute state, cap reads during file growth.
+- Add read-only restore review with identity deltas, optimistic stale-check and durable separate safety backup before applying reviewed restore. Retain legacy command for existing clients.
+- Candidate compilation and runtime validation pending; previous run 127 Rust tests, browser and Windows build passed.
+
 ## Integrated batch — native volume and session file content
 
 - Native Windows Core Audio default multimedia output read, explicit volume/mute, short-lived single-use endpoint lease, revalidation and readback. No recording, automatic changes, or raw IDs in frontend/persistence.

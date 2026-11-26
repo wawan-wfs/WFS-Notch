@@ -242,6 +242,14 @@ pub struct OutputVolume {
     muted: bool,
 }
 
+fn volume_state_matches(old: f32, old_mute: bool, current: f32, current_mute: bool) -> bool {
+    old.is_finite()
+        && current.is_finite()
+        && (0.0..=1.0).contains(&current)
+        && (old - current).abs() <= 0.001
+        && old_mute == current_mute
+}
+
 fn valid_volume_change(percent: Option<u8>, muted: Option<bool>) -> bool {
     match (percent, muted) {
         (Some(value), None) => value <= 100,
@@ -254,6 +262,8 @@ fn valid_volume_change(percent: Option<u8>, muted: Option<bool>) -> bool {
 struct VolumeLease {
     token: String,
     endpoint: String,
+    scalar: f32,
+    muted: bool,
     issued: std::time::Instant,
 }
 
@@ -331,6 +341,8 @@ fn volume_snapshot(
     *lease = Some(VolumeLease {
         token: token.clone(),
         endpoint,
+        scalar,
+        muted,
         issued: std::time::Instant::now(),
     });
     Ok(OutputVolume {
@@ -379,9 +391,18 @@ pub async fn set_default_output_volume(
                 if endpoint != selected.endpoint {
                     return Err("Default output changed; read the new endpoint first".into());
                 }
+                let current = unsafe { volume.GetMasterVolumeLevelScalar() }
+                    .map_err(|_| "Cannot revalidate current output volume".to_owned())?;
+                let current_mute = unsafe { volume.GetMute() }
+                    .map_err(|_| "Cannot revalidate current mute state".to_owned())?
+                    .as_bool();
+                if !volume_state_matches(selected.scalar, selected.muted, current, current_mute) {
+                    return Err("Output state changed in Windows; read it again".into());
+                }
                 let result = match (percent, muted) {
                     (Some(value), None) => unsafe {
-                        volume.SetMasterVolumeLevelScalar(f32::from(value) / 100.0, std::ptr::null())
+                        volume
+                            .SetMasterVolumeLevelScalar(f32::from(value) / 100.0, std::ptr::null())
                     },
                     (None, Some(value)) => unsafe { volume.SetMute(value, std::ptr::null()) },
                     _ => return Err("Invalid output volume action".into()),
@@ -407,6 +428,10 @@ mod output_volume_tests {
 
     #[test]
     fn volume_change_is_single_action_and_bounded() {
+        assert!(volume_state_matches(0.4, false, 0.4, false));
+        assert!(!volume_state_matches(0.4, false, 0.5, false));
+        assert!(!volume_state_matches(0.4, false, 0.4, true));
+        assert!(!volume_state_matches(0.4, false, f32::NAN, false));
         assert!(valid_volume_change(Some(0), None));
         assert!(valid_volume_change(Some(100), None));
         assert!(valid_volume_change(None, Some(false)));
