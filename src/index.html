@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="styles/phase48.css">
   <link rel="stylesheet" href="styles/phase49.css">
   <link rel="stylesheet" href="styles/phase50.css">
+  <link rel="stylesheet" href="styles/phase51.css">
 </head>
 <body>
   <div id="notch" class="notch" aria-label="WFS Notch">
@@ -193,7 +194,7 @@
           <p id="system-detail" class="system-detail" role="status">No reading yet.</p>
           <div class="system-detail-columns">
             <section><h3>Storage volumes</h3><div id="system-disks" aria-live="polite">Read-only on Windows · no preview numbers</div></section>
-            <section><h3>Network interfaces</h3><div id="system-networks" aria-live="polite">Read-only on Windows · no preview numbers</div></section>
+            <section><h3>Network interfaces</h3><div id="system-networks" aria-live="polite">Read-only on Windows · no preview numbers</div><details class="phase51-details"><summary>Network transfer rates</summary><p class="event-hint">Derived from successive local counter samples, not a speed test.</p><button id="phase51-network-clear" type="button" class="secondary">Clear rate baseline</button><p id="phase51-network-status" class="event-hint" role="status">No sample.</p><div id="phase51-network-list"></div></details></section>
           </div>
           <section class="phase44-card" aria-labelledby="device-heading"><div class="section-heading"><div><h3 id="device-heading">Device diagnostics</h3><p>On-demand read-only OS, CPU, memory and uptime summary. No identifiers or network requests.</p></div></div><div class="tool-actions"><button id="device-read" class="secondary" type="button">Read device info</button><button id="device-clear" class="secondary" type="button" disabled>Clear device info</button></div><p id="device-status" class="event-hint" role="status">Not requested.</p><div id="device-results" class="module-list"></div></section>
           <section class="workspace-card" aria-labelledby="audio-heading"><h3 id="audio-heading">Audio devices</h3><p class="event-hint">Read local Windows audio endpoint names and availability on request. No device IDs, recording, playback, or setting changes.</p><div class="tool-actions"><button id="audio-read" type="button" class="secondary">Read audio devices</button><button id="audio-clear" type="button" class="secondary" disabled>Clear audio list</button></div><p id="audio-status" class="event-hint" role="status">Not requested.</p><label class="phase48-filter">Show audio endpoints<select id="phase48-audio-filter"><option value="all">All</option><option value="default">Default only</option><option value="enabled">Enabled only</option><option value="disabled">Disabled only</option></select></label><label class="phase48-filter">Find endpoint by name<input id="phase49-audio-search" type="search" maxlength="120" placeholder="Search local snapshot"></label><p id="phase48-audio-summary" class="event-hint">No snapshot requested.</p><div id="audio-list" class="module-list"></div></section>
@@ -202,7 +203,7 @@
         </section>
         <section class="panel" id="panel-timer">
           <div class="section-heading"><div><h2>Focus timer</h2><p>Own your next session.</p></div><span class="section-pill">POMODORO</span></div>
-          <div class="timer-layout"><div class="timer-ring"><div class="timer-ring-inner"><strong id="timer-display">25:00</strong><span id="timer-label">READY WHEN YOU ARE</span></div></div><div class="timer-controls"><p>SESSION LENGTH</p><div class="preset-row"><button data-minutes="15">15m</button><button data-minutes="25" class="selected">25m</button><button data-minutes="45">45m</button><button data-minutes="60">60m</button></div><button id="timer-start" class="primary large">Start focus</button><button id="timer-reset" class="secondary large">Reset</button></div></div>
+          <div class="timer-layout"><div class="timer-ring"><div class="timer-ring-inner"><strong id="timer-display">25:00</strong><span id="timer-label">READY WHEN YOU ARE</span></div></div><div class="timer-controls"><p>SESSION LENGTH</p><div class="preset-row"><button data-minutes="15">15m</button><button data-minutes="25" class="selected">25m</button><button data-minutes="45">45m</button><button data-minutes="60">60m</button></div><button id="timer-start" class="primary large">Start focus</button><button id="timer-reset" class="secondary large">Reset</button></div></div><section class="workspace-card"><h3>Custom focus duration</h3><form id="phase51-focus-form" class="phase51-form"><label>Minutes (1–120)<input type="number" id="phase51-focus-minutes" min="1" max="120" value="25" required></label><button id="phase51-focus-apply" class="secondary" type="submit">Set duration</button></form><p id="phase51-focus-end" class="event-hint">No active focus deadline</p></section>
           <div class="focus-cycle-card">
             <label class="toggle-label"><input id="focus-cycle" type="checkbox" aria-describedby="focus-cycle-help"><span>Pomodoro cycle</span></label>
             <small id="focus-cycle-help">After focus, take a 5-minute break, or 15 minutes after four sessions. Start the next focus when ready. Reset a running or paused timer before changing modes.</small>
@@ -218,6 +219,7 @@
             <div class="system-card"><span class="mini-label">CALM MINUTES</span><b id="health-calm">0</b><button class="secondary" data-health="calm_plus" type="button">+ 1 mindful minute</button></div>
           </div>
           <p class="event-hint">Your counters roll over at the next local date. This is a personal reminder, not a medical device.</p>
+        <details class="workspace-card phase51-details"><summary>Personal daily targets</summary><p class="event-hint">Optional session-only targets; not medical recommendations. Existing daily counters remain unchanged.</p><form id="phase51-health-form" class="phase51-form"><label>Glasses<input id="phase51-water" type="number" min="1" max="30" value="8" required></label><label>Breaks<input id="phase51-breaks" type="number" min="1" max="24" value="3" required></label><label>Calm minutes<input id="phase51-calm" type="number" min="1" max="180" value="5" required></label><button type="submit" class="secondary">Set targets</button></form><p id="phase51-health-status" class="event-hint">Session targets only.</p><div id="phase51-health-progress"></div></details>
         </section>
         <section class="panel" id="panel-day">
           <div class="section-heading"><div><h2>Day progress</h2><p>One view of today’s timeline and completed tasks.</p></div><span class="section-pill" id="day-percent">0%</span></div>
@@ -234,7 +236,7 @@
             <button type="submit" class="secondary">Set duration</button>
           </form>
           <div class="tool-actions"><button class="primary" id="countdown-toggle" type="button">Start</button><button class="secondary" data-add-minutes="1" type="button">+1 minute</button><button class="secondary" data-add-minutes="5" type="button">+5 minutes</button><button class="secondary" id="countdown-reset" type="button">Reset to 5m</button></div>
-          <p class="event-hint" id="countdown-status">Timer is ready. It continues to count down while the panel is hidden.</p>
+          <p class="event-hint" id="phase51-countdown-end">No active countdown deadline</p><p class="event-hint" id="countdown-status">Timer is ready. It continues to count down while the panel is hidden.</p>
           <div class="tool-actions countdown-presets" role="group" aria-label="Countdown presets">
             <button class="secondary" type="button" data-countdown-slot="0">5 min</button><button class="secondary" type="button" data-countdown-slot="1">15 min</button><button class="secondary" type="button" data-countdown-slot="2">30 min</button>
           </div>
@@ -259,7 +261,7 @@
             <div class="weather-days" id="weather-hours" aria-label="Hourly weather forecast"></div>
             <h3>7-day outlook</h3>
             <div class="weather-days" id="weather-days" aria-label="Daily weather forecast"></div>
-            <p class="event-hint" id="weather-timezone"></p>
+            <p class="event-hint" id="weather-timezone"></p><details class="phase51-details"><summary>Rain probability window</summary><label>Threshold <select id="phase51-rain-threshold"><option value="20">20%</option><option value="50" selected>50%</option><option value="80">80%</option></select></label><p id="phase51-rain-status" class="event-hint">No forecast available.</p><div id="phase51-rain-list"></div></details>
           </div>
           <p class="event-hint">City search is sent only on request to Open-Meteo. Results show the matched location; internet is required. No temperature is invented when unavailable.</p>
         </section>
@@ -342,7 +344,7 @@
         <section class="panel" id="panel-tools">
           <div class="section-heading"><div><h2>Quick tools</h2><p>Small utilities built into the notch.</p></div><span class="section-pill">OFFLINE</span></div>
           <div class="tools-grid">
-            <div class="tool-card"><b>Stopwatch</b><div class="stopwatch-display" id="stopwatch-display">00:00.0</div><div class="tool-actions"><button class="primary" id="stopwatch-toggle">Start</button><button class="secondary" id="stopwatch-lap">Lap</button><button class="secondary" id="stopwatch-reset">Reset</button></div><div class="tool-laps" id="stopwatch-laps"></div></div>
+            <div class="tool-card"><b>Stopwatch</b><div class="stopwatch-display" id="stopwatch-display">00:00.0</div><div class="tool-actions"><button class="primary" id="stopwatch-toggle">Start</button><button class="secondary" id="stopwatch-lap">Lap</button><button class="secondary" id="stopwatch-reset">Reset</button></div><div class="tool-laps" id="stopwatch-laps"></div><p id="phase51-lap-stats" class="event-hint">Record at least two laps for interval statistics.</p><button id="phase51-lap-copy" class="secondary" type="button" disabled>Copy retained lap intervals CSV</button></div>
             <div class="tool-card"><b>Secure password generator</b><p>Generated locally using the OS cryptographic random source.</p><div class="tool-actions"><button class="primary" id="password-generate">Generate</button><button class="secondary" id="password-copy">Copy</button></div><output id="password-output" class="tool-output" aria-live="polite">Click Generate</output></div>
             <div class="tool-card"><b>Quick math</b><p>Simple arithmetic. No network, no eval().</p><form id="math-form" class="tool-actions"><input id="math-input" aria-label="Math expression" placeholder="120 * 1.15" required><button class="primary" type="submit">=</button></form><output id="math-output" class="tool-output">Result</output></div>
             <div class="tool-card"><b>Command palette</b><p>Jump to modules quickly with Ctrl+K (while WFS Notch is focused).</p><button id="palette-open" class="secondary" type="button">Open palette</button></div>
@@ -430,5 +432,6 @@
   <script src="features/phase48.js" defer></script>
   <script src="features/phase49.js" defer></script>
   <script src="features/phase50.js" defer></script>
+  <script src="features/phase51.js" defer></script>
 </body>
 </html>

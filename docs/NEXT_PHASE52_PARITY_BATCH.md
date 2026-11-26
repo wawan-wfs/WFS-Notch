@@ -1,0 +1,3 @@
+# Phase 52 — acceptance and native experience expansion
+
+Use exact latest dev/phase51-native-workflows candidate commit and automatic CI. Resolve actual errors from every job; verify package hashes and screenshot matrix for exact SHA. Preserve v0.45.0 until release gates pass, all 16 modules, WFS Notch, Rust + Tauri 2, automatic candidate-branch checks only and no deployment. Physical Windows 10/11 tests required for media, audio, notifications, file picker, recovery, DPI/fullscreen. Deeply extend native integrations and redesign each module; measure reference Poni 1.5.0 parity against fixed matrix with actual evidence. Do not fabricate acceptance. Provide source, installer if built, screenshots, CHANGELOG, report and next prompt.

@@ -741,7 +741,9 @@ impl AppData {
         self.calendar_series.retain(|key, series| series.valid(key));
         // Never truncate cancellation markers or source rules silently:
         // retain safe entries; new insertions are capped at mutation time.
-        if ![900, 1500, 2700, 3600].contains(&self.focus.duration_seconds) {
+        if !(60..=7200).contains(&self.focus.duration_seconds)
+            || !self.focus.duration_seconds.is_multiple_of(60)
+        {
             self.focus = FocusState::default();
         }
         if !self.focus.cycle_enabled && self.focus.phase != FocusPhase::Focus {
@@ -887,7 +889,8 @@ impl Store {
             .map_err(|error| error.to_string())?;
         file.sync_all().map_err(|error| error.to_string())?;
         drop(file);
-        if self.path.exists() {
+        let rotated_primary = self.path.exists();
+        if rotated_primary {
             if backup.exists() {
                 // Preserve the previous committed backup until the new primary
                 // is fully serialized/fsync'd, then rotate it to a second slot.
@@ -907,7 +910,9 @@ impl Store {
             }
         }
         if let Err(error) = fs::rename(&temp, &self.path) {
-            if !self.path.exists() && backup.exists() {
+            // A recovery save has no primary to rotate. Never copy an old,
+            // unsanitized backup into the primary after a failed recovery commit.
+            if rotated_primary && !self.path.exists() && backup.exists() {
                 let _ = fs::copy(&backup, &self.path);
             }
             return Err(error.to_string());
@@ -2317,8 +2322,8 @@ fn set_notch_on_top(
 
 #[tauri::command]
 fn set_focus_duration(store: State<'_, Mutex<Store>>, minutes: u64) -> Result<AppData, String> {
-    if ![15, 25, 45, 60].contains(&minutes) {
-        return Err("Invalid focus preset".into());
+    if !(1..=120).contains(&minutes) {
+        return Err("Choose 1–120 focus minutes".into());
     }
     with_store(store, |state| {
         if state.focus.phase != FocusPhase::Focus {
@@ -3666,6 +3671,23 @@ mod tests {
         assert!(backup_path(&store, "../secret.json").is_err());
         assert!(backup_path(&store, "backup-100-42.json").is_ok());
         assert!(backup_path(&store, "backup-abc.json").is_err());
+    }
+
+    #[test]
+    fn custom_focus_duration_survives_state_sanitization() {
+        let mut data = AppData::default();
+        for seconds in [60, 1020, 7200] {
+            data.focus.duration_seconds = seconds;
+            data.focus.remaining_seconds = seconds;
+            data.sanitize();
+            assert_eq!(data.focus.duration_seconds, seconds);
+            assert_eq!(data.focus.remaining_seconds, seconds);
+        }
+        for seconds in [0, 61, 7260] {
+            data.focus.duration_seconds = seconds;
+            data.sanitize();
+            assert_eq!(data.focus.duration_seconds, 1500);
+        }
     }
 
     #[test]

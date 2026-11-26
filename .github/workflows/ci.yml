@@ -48,6 +48,12 @@ jobs:
         run: node tests/shelf_model.test.cjs
       - name: Phase 45 state, storage failure and IPC fixtures
         run: node tests/phase45_state.test.cjs
+      - name: Phase 51 JavaScript syntax
+        run: node --check src/features/phase51.js
+      - name: Phase 51 timer, counters and wellness model regression
+        run: node tests/phase51_model.test.cjs
+      - name: Phase 51 browser integration
+        run: python tests/browser_phase51.py
       - name: Phase 50 JavaScript syntax
         run: node --check src/features/phase50.js
       - name: Phase 50 workbench model regression

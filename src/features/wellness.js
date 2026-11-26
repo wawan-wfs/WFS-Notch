@@ -40,9 +40,11 @@ function renderHealth() {
   $('#health-water-meter').style.width = Math.min(100, h.water_glasses / 8 * 100) + '%';
   $('#health-breaks').textContent = String(h.break_count);
   $('#health-calm').textContent = String(h.calm_minutes);
+  if(typeof wfs51RenderHealth==='function')wfs51RenderHealth();
 }
 function renderCountdown() {
   const timer = countdownView();
+  if(typeof wfs51RenderTimers==='function')wfs51RenderTimers();
   const hours = Math.floor(timer.remaining / 3600);
   const mins = Math.floor(timer.remaining % 3600 / 60);
   const secs = timer.remaining % 60;
@@ -235,6 +237,7 @@ async function fetchWeather(city, selectedPlace = null) {
   const field = $('#weather-current');
   if (selectedPlace) field.focus({preventScroll: true});
   weatherInFlight = true;
+  if(typeof wfs51ClearWeather==='function')wfs51ClearWeather();
   $('#weather-search').disabled = true;
   field.textContent = 'Looking up ' + (selectedPlace?.name || city) + '…';
   $('#weather-forecast').hidden = true;
@@ -279,6 +282,7 @@ async function fetchWeather(city, selectedPlace = null) {
     const current = forecast.current;
     if (!current || !Number.isFinite(current.temperature_2m)) throw new Error('Weather not available');
     renderWeatherForecast(place, forecast);
+    if(typeof wfs51CaptureWeather==='function')wfs51CaptureWeather(place,forecast);
     try { localStorage.setItem('wfs-notch-weather-city',city); } catch {}
   } catch (error) {
     field.textContent = 'Weather unavailable: ' + (error?.message || String(error));

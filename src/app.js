@@ -579,7 +579,7 @@ function previewInvoke(command, args = {}) {
       state.settings.notifications_show_details = Boolean(args.enabled && args.showDetails);
       break;
     case 'set_focus_duration': {
-      if (![15, 25, 45, 60].includes(args.minutes)) throw new Error('Invalid focus preset');
+      if (!Number.isInteger(args.minutes) || args.minutes < 1 || args.minutes > 120) throw new Error('Choose 1–120 focus minutes');
       if (focus.phase !== 'focus') throw new Error('Set the focus duration after your break');
       focus.duration_seconds = args.minutes * 60;
       focus.remaining_seconds = focus.duration_seconds;
@@ -1219,6 +1219,7 @@ function formatted(seconds) {
 function renderTimer() {
   const focus = data.focus || defaults().focus;
   const view = focusView(focus);
+  if(typeof wfs51RenderTimers==='function')wfs51RenderTimers();
   const display = formatted(view.remaining);
   $('#timer-display').textContent = display;
   $('#focus-status').textContent = display;

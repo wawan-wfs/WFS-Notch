@@ -36,6 +36,7 @@ function renderSystemDetails(snapshot) {
   const networks = document.querySelector('#system-networks');
   disks.replaceChildren();
   networks.replaceChildren();
+  if(typeof wfs51ReadNetwork==='function')wfs51ReadNetwork(snapshot);
   if (!snapshot) {
     disks.textContent = 'Native Windows readings unavailable in browser preview.';
     networks.textContent = 'Native Windows readings unavailable in browser preview.';
@@ -76,6 +77,7 @@ async function refreshSystemDetails(force = false) {
     renderSystemDetails(await invoke('get_system_details'));
     systemDetailsLastFetch = Date.now();
   } catch (error) {
+    if(typeof wfs51ClearNetwork==='function')wfs51ClearNetwork();
     document.querySelector('#system-disks').textContent = 'Disk snapshot unavailable.';
     document.querySelector('#system-networks').textContent = 'Network snapshot unavailable.';
     showError(error);

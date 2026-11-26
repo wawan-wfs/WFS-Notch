@@ -1,5 +1,12 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Phase 51 — v0.45.0 candidate
+
+- Phase 50 automatic CI run 45757846175: all jobs PASS, 122 Rust tests, 18 new full browser workbench assertions and 80 screenshot matrix. Four ZIP and two EXE hashes independently checked.
+- Custom native/preview focus duration (1–120 minutes), persisted sanitizer support, timer finish estimates; session-only personal health targets; derived native network transfer rates; local weather rain probability threshold; consecutive stopwatch interval summary and CSV clipboard.
+- Recovery save no longer restores an unrotated old backup after a failed final rename. Rust regression covers custom focus sanitation; full Rust and browser candidate gates pending.
+- 37 new JS model assertions PASS. Retain all 16 modules, automatic candidate CI and no deployment.
+
 ## Phase 50 — CI activation checkpoint
 
 - Enable automatic CI on `dev/phase[0-9]*` candidate branches, retaining manual dispatch, read-only permissions, existing concurrency and all existing gates. No automated deployment or main changes. Explicit owner approval 2026-11-26.

@@ -95,6 +95,7 @@ function renderStopwatch() {
   const tenths = Math.floor(ms / 100) % 10;
   $('#stopwatch-display').textContent = String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0') + '.' + tenths;
   $('#stopwatch-toggle').textContent = stopwatch.since == null ? 'Start' : 'Pause';
+  if(typeof wfs51RenderLaps==='function')wfs51RenderLaps();
   const laps = $('#stopwatch-laps');
   if (laps.dataset.count !== String(stopwatch.laps.length)) {
     laps.dataset.count = String(stopwatch.laps.length);
