@@ -57,18 +57,31 @@ with sync_playwright() as pw:
         page.locator('#wfs52-shelf-apply').click()
         expect(page.locator('#shelf-list')).to_contain_text('sample.pdf')
         check(page.evaluate("()=>shelfEntries.length===1"),'one metadata entry')
-        page.locator('#shelf-input').set_input_files({'name':'sample.txt','mimeType':'text/plain','buffer':b'<script>literal</script>'})
+        page.locator('#shelf-input').set_input_files([
+            {'name':'sample.txt','mimeType':'text/plain','buffer':b'<script>literal</script>'},
+            {'name':'other.txt','mimeType':'text/plain','buffer':b'Other selected file'},
+        ])
         page.locator('#wfs52-file-select').evaluate("(e)=>e.closest('details').open=true")
-        page.locator('#wfs52-file-select').select_option(index=1)
+        page.locator('#wfs52-file-select').select_option(value=page.evaluate(
+            "()=>[...wfs52ShelfHandles.keys()].find(k=>JSON.parse(k)[0]==='sample.txt')"))
+        expect(page.locator('#wfs54-shelf-release')).to_be_enabled()
         page.locator('#wfs52-file-open').click()
         expect(page.locator('#wfs52-file-content pre')).to_have_text('<script>literal</script>')
         check(page.locator('#wfs52-file-content script').count()==0,'text never interpreted')
+        page.evaluate("""()=>{Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.fixtureClipboard=text;}}});}""")
+        page.locator('#wfs54-shelf-copy').click()
+        page.wait_for_function("()=>window.fixtureClipboard==='<script>literal</script>'")
+        check(page.evaluate("()=>window.fixtureClipboard==='<script>literal</script>'"),'explicit clipboard fixture receives literal preview')
         page.locator('#wfs53-shelf-note').click()
         page.wait_for_function("()=>data.notes.some(n=>n.title==='sample.txt'&&n.body==='<script>literal</script>')")
         check(page.evaluate("()=>data.notes.some(n=>n.tags.includes('shelf'))"),'explicit local note created')
+        page.locator('#wfs54-shelf-release').click()
+        check(page.locator('#wfs52-file-content').inner_text()=='','individual release clears preview')
+        expect(page.locator('#wfs54-shelf-copy')).to_be_disabled()
+        check(page.evaluate("()=>wfs52ShelfHandles.size===1&&[...wfs52ShelfHandles.keys()].some(k=>JSON.parse(k)[0]==='other.txt')"),'individual release retains other selected handle')
         page.locator('#wfs52-file-forget').click()
         check(page.locator('#wfs52-file-content').inner_text()=='','release content')
-        check(page.evaluate("()=>shelfEntries.length===2&&wfs52ShelfHandles.size===0"),'metadata preserved after releasing files')
+        check(page.evaluate("()=>shelfEntries.length===3&&wfs52ShelfHandles.size===0"),'metadata preserved after releasing files')
         page.locator('#wfs52-link-form').evaluate("(e)=>e.closest('details').open=true")
         page.locator('#wfs52-link-select').select_option(label='Old site')
         page.locator('#wfs52-link-load').click()
@@ -101,10 +114,18 @@ with sync_playwright() as pw:
         expect(page.locator('#wfs52-seek-apply')).to_be_disabled()
         check(page.evaluate("()=>!nativeInvoke"),'no native simulation')
         check(page.locator('.wfs53-context').count()==16,'all module context surfaces')
-        page.evaluate("async()=>{await invoke('create_backup');await mutation('add_todo',{title:'After snapshot'});await switchTab('settings');await refreshBackups();}")
+        page.evaluate("""async()=>{
+            await invoke('create_backup');
+            const task=data.todos.find(t=>t.title==='Integrated task');
+            await mutation('update_todo',{id:task.id,title:'Edited after snapshot',priority:task.priority,dueAtMs:task.due_at_ms,recurrence:null});
+            await mutation('add_todo',{title:'After snapshot'});
+            await switchTab('settings');await refreshBackups();
+        }""")
         page.locator('#backup-list button[aria-label^="Review backup"]').first.click()
         expect(page.locator('#wfs53-restore-status')).to_contain_text('Review ready')
         check('1 removed IDs' in page.locator('#wfs53-restore-rows').inner_text(),'removal visible in review')
+        check('1 retained records changed' in page.locator('#wfs53-restore-rows').inner_text(),'retained record edit visible without title')
+        check('Edited after snapshot' not in page.locator('#wfs53-restore-rows').inner_text(),'review does not expose task title')
         page.evaluate("()=>mutation('add_todo',{title:'Stale review change'})")
         page.locator('#wfs53-restore-apply').click()
         expect(page.locator('#wfs53-restore-status')).to_contain_text('changed')
@@ -114,6 +135,7 @@ with sync_playwright() as pw:
         page.locator('#wfs53-restore-apply').click()
         expect(page.locator('#wfs53-restore-status')).to_contain_text('Protective snapshot saved')
         check(page.evaluate("()=>!data.todos.some(t=>t.title==='After snapshot')"),'reviewed restore applied')
+        check(page.evaluate("()=>data.todos.some(t=>t.title==='Integrated task')&&!data.todos.some(t=>t.title==='Edited after snapshot')"),'retained edit restored')
         check(page.evaluate("()=>JSON.parse(localStorage.getItem(previewBackupsKey)).length>=2"),'protective backup exists')
         check(not errors,'no JavaScript errors '+str(errors))
         out=ROOT/'test-results';out.mkdir(exist_ok=True)
