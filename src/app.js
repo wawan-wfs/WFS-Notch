@@ -324,6 +324,11 @@ function previewInvoke(command, args = {}) {
       state.todos = next.map((task, index) => task === state.todos[index] ? task : {...task,change_token:newTaskToken()});
       break;
     }
+    case 'set_task_deadlines': {
+      const next = wfs53DeadlinePlan(state.todos, args.changes, args.dueAtMs ?? null);
+      state.todos = next.map((task,index)=>task===state.todos[index]?task:{...task,change_token:newTaskToken()});
+      break;
+    }
     case 'toggle_todo': {
       const todo = state.todos.find(item => item.id === args.id);
       if (!todo) throw new Error('Task not found');

@@ -1,5 +1,10 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Integrated continuation — atomic scheduling and durable recovery tests
+
+- Bulk deadline set/clear with shared optimistic selection validation, refusal of recurring tasks, preservation of priority and all-or-nothing application. No automatic changes to schedules.
+- Added Rust file-backed reviewed restore test and atomic deadline test; browser acceptance covers stale review and protective snapshot. 8 additional model assertions passed.
+
 ## Integrated continuation — connected recovery and workspace surfaces
 
 - Native and preview protected restore review, ID addition/removal counts, stale review rejection and separate safety snapshot. Explicit selected text-to-note creation, daily UTC activity breakdown with consent and filter scoping.

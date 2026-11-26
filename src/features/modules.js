@@ -343,6 +343,7 @@ function renderShelf(focusIndex = null) {
     });
     line.append(info,remove); list.append(line);
   });
+  if(typeof wfs53RenderModuleContext==='function')wfs53RenderModuleContext();
   if (focusIndex !== null) {
     const buttons = list.querySelectorAll('button');
     (buttons[Math.min(focusIndex,buttons.length-1)] || $('#shelf-input')).focus();

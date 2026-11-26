@@ -1074,19 +1074,17 @@ struct TaskPriorityChange {
     expected_due_at_ms: Option<u64>,
 }
 
-fn apply_task_priorities(
-    state: &mut AppData,
-    changes: &[TaskPriorityChange],
-    priority: &str,
-) -> Result<(), String> {
-    if changes.is_empty() || changes.len() > 50 || !matches!(priority, "low" | "normal" | "high") {
-        return Err("Choose 1–50 open tasks and a supported priority".into());
+fn checked_task_selection<'a>(
+    state: &AppData,
+    changes: &'a [TaskPriorityChange],
+) -> Result<HashSet<&'a str>, String> {
+    if changes.is_empty() || changes.len() > 50 {
+        return Err("Choose 1–50 open tasks".into());
     }
     let mut seen = HashSet::new();
-    // Validate the entire selection before changing any task.
     for change in changes {
         if !seen.insert(change.id.as_str()) {
-            return Err("Duplicate task in priority selection".into());
+            return Err("Duplicate task in selection".into());
         }
         let todo = state
             .todos
@@ -1100,6 +1098,18 @@ fn apply_task_priorities(
             return Err("Task selection changed; review it again".into());
         }
     }
+    Ok(seen)
+}
+
+fn apply_task_priorities(
+    state: &mut AppData,
+    changes: &[TaskPriorityChange],
+    priority: &str,
+) -> Result<(), String> {
+    if !matches!(priority, "low" | "normal" | "high") {
+        return Err("Unsupported priority".into());
+    }
+    let seen = checked_task_selection(state, changes)?;
     for todo in &mut state.todos {
         if seen.contains(todo.id.as_str()) && todo.priority != priority {
             todo.priority = priority.to_owned();
@@ -1107,6 +1117,44 @@ fn apply_task_priorities(
         }
     }
     Ok(())
+}
+
+fn apply_task_deadlines(
+    state: &mut AppData,
+    changes: &[TaskPriorityChange],
+    due_at_ms: Option<u64>,
+) -> Result<(), String> {
+    if due_at_ms.is_some_and(|ms| !(946_684_800_000..=4_102_444_800_000).contains(&ms)) {
+        return Err("Task due date must be between year 2000 and 2100".into());
+    }
+    let seen = checked_task_selection(state, changes)?;
+    if state
+        .todos
+        .iter()
+        .any(|todo| seen.contains(todo.id.as_str()) && todo.recurrence.is_some())
+    {
+        return Err("Edit repeating task schedules individually".into());
+    }
+    for todo in &mut state.todos {
+        if seen.contains(todo.id.as_str()) && todo.due_at_ms != due_at_ms {
+            todo.due_at_ms = due_at_ms;
+            todo.snoozed_until_ms = None;
+            todo.recurrence_timezone = None;
+            todo.change_token = Some(new_id());
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn set_task_deadlines(
+    store: State<'_, Mutex<Store>>,
+    changes: Vec<TaskPriorityChange>,
+    due_at_ms: Option<u64>,
+) -> Result<AppData, String> {
+    with_store(store, |state| {
+        apply_task_deadlines(state, &changes, due_at_ms)
+    })
 }
 
 #[tauri::command]
@@ -2396,14 +2444,22 @@ fn restore_backup_reviewed(
     token: String,
 ) -> Result<ReviewedRestoreResult, String> {
     let mut locked = store.lock().map_err(|_| "Storage lock poisoned")?;
-    let bytes = reviewed_backup_bytes(&locked, &id)?;
-    if token != restore_fingerprint(&id, &bytes, &locked.data)? {
+    apply_reviewed_restore(&mut locked, &id, &token)
+}
+
+fn apply_reviewed_restore(
+    locked: &mut Store,
+    id: &str,
+    token: &str,
+) -> Result<ReviewedRestoreResult, String> {
+    let bytes = reviewed_backup_bytes(locked, id)?;
+    if token != restore_fingerprint(id, &bytes, &locked.data)? {
         return Err("Backup or local state changed; review again".into());
     }
     let snapshot = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
     let recovered = prepare_restore(snapshot, &locked.data)?;
     // A separate durable manual backup must succeed before changing primary data.
-    let safety_backup = create_backup_locked(&locked)?;
+    let safety_backup = create_backup_locked(locked)?;
     let data = locked.transact(|state| {
         *state = recovered;
         Ok(())
@@ -2673,6 +2729,7 @@ fn main() {
             add_todo,
             update_todo,
             set_task_priorities,
+            set_task_deadlines,
             toggle_todo,
             undo_task_completion,
             set_task_history_limit,
@@ -2774,6 +2831,59 @@ mod tests {
             std::process::id(),
             new_id()
         ))
+    }
+
+    #[test]
+    fn reviewed_restore_saves_separate_backup_and_rejects_stale_state() {
+        let dir = temp_file("reviewed-restore-dir");
+        fs::create_dir_all(&dir).unwrap();
+        let mut store = Store::open(dir.join("state.json")).unwrap();
+        let backup = create_backup_locked(&store).unwrap();
+        let bytes = reviewed_backup_bytes(&store, &backup.id).unwrap();
+        let token = restore_fingerprint(&backup.id, &bytes, &store.data).unwrap();
+        store
+            .transact(|state| {
+                state.settings.pin_open = true;
+                Ok(())
+            })
+            .unwrap();
+        assert!(apply_reviewed_restore(&mut store, &backup.id, &token).is_err());
+        assert!(store.data.settings.pin_open);
+        let fresh = restore_fingerprint(&backup.id, &bytes, &store.data).unwrap();
+        let result = apply_reviewed_restore(&mut store, &backup.id, &fresh).unwrap();
+        assert!(!result.data.settings.pin_open);
+        let safety = backup_path(&store, &result.safety_backup.id).unwrap();
+        assert!(read_state(&safety).unwrap().settings.pin_open);
+        assert_eq!(reviewed_backup_bytes(&store, &backup.id).unwrap(), bytes);
+        drop(store);
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn bulk_deadlines_reject_recurrence_and_preserve_priority() {
+        let mut state = AppData::default();
+        let first: Todo = serde_json::from_value(serde_json::json!({
+            "id": "one", "title": "One", "done": false, "created_ms": 1,
+            "priority": "high", "due_at_ms": 1_800_000_000_000_u64
+        }))
+        .unwrap();
+        let mut second = first.clone();
+        second.id = "two".into();
+        second.recurrence = Some(TaskRecurrence::Daily);
+        state.todos = vec![first, second];
+        let changes = ["one", "two"].map(|id| TaskPriorityChange {
+            id: id.into(),
+            expected_token: None,
+            expected_due_at_ms: Some(1_800_000_000_000),
+        });
+        let before = state.clone();
+        assert!(apply_task_deadlines(&mut state, &changes, None).is_err());
+        assert_eq!(state, before);
+        apply_task_deadlines(&mut state, &changes[..1], None).unwrap();
+        assert_eq!(state.todos[0].due_at_ms, None);
+        assert_eq!(state.todos[0].priority, "high");
+        assert!(state.todos[0].change_token.is_some());
+        assert!(apply_task_deadlines(&mut state, &changes[..1], Some(1)).is_err());
     }
 
     #[test]

@@ -20,3 +20,5 @@
 #panel-settings .backup-entry{display:flex;flex-wrap:wrap;gap:6px}#panel-settings .backup-entry>div{flex:1;min-width:100px;overflow-wrap:anywhere}#panel-settings .wfs53-recovery{border-left:3px solid var(--accent)}
 @media(max-width:560px){.wfs53-context{align-items:flex-start;padding:7px;gap:5px}.wfs53-context-action{max-width:40%;white-space:normal}.wfs53-context-label b{font-size:11px}.wfs53-context-label small{font-size:8px}}
 @media(forced-colors:active){.wfs53-context,.wfs53-delta{border-color:ButtonText}}
+
+.wfs53-batch-due{padding:8px 0;border-top:1px solid var(--line);margin-top:8px}.wfs53-batch-due label{display:grid;gap:4px;font-size:11px;color:var(--muted);max-width:100%}.wfs53-batch-due input{max-width:100%;min-width:0}

@@ -42,9 +42,22 @@ function wfs53LocalSummary(state,now){
     links:links.length};
 }
 
+function wfs53DeadlinePlan(todos,changes,due){
+  if(due!==null&&(!Number.isSafeInteger(due)||due<946684800000||due>4102444800000))throw Error('Invalid task due time');
+  if(!Array.isArray(changes)||changes.length<1||changes.length>50)throw Error('Choose 1–50 open tasks');
+  const ids=new Set(),byId=new Map(todos.map(t=>[t.id,t]));
+  for(const c of changes){
+    if(!c||typeof c.id!=='string'||ids.has(c.id))throw Error('Invalid or duplicate selection');
+    ids.add(c.id);const t=byId.get(c.id);
+    if(!t||t.done||(t.change_token??null)!==(c.expected_token??null)||(t.due_at_ms??null)!==(c.expected_due_at_ms??null))throw Error('Task selection changed; review it again');
+    if(t.recurrence)throw Error('Edit repeating task schedules individually');
+  }
+  return todos.map(t=>ids.has(t.id)&&(t.due_at_ms??null)!==due?{...t,due_at_ms:due,snoozed_until_ms:null,recurrence_timezone:null}:t);
+}
+
 let wfs53PreviewLease=null,wfs53Review=null,wfs53ReviewTicket=0,wfs53RestoreBusy=false,wfs53NoteBusy=false;
 function wfs53ClearReview(message='Choose Review & protect on a backup.'){
-  wfs53ReviewTicket++;wfs53Review=null;
+  wfs53ReviewTicket++;wfs53Review=null;wfs53PreviewLease=null;
   const host=$('#wfs53-restore-rows');if(!host)return;
   host.replaceChildren();$('#wfs53-restore-apply').disabled=true;$('#wfs53-restore-status').textContent=message;
 }
@@ -55,7 +68,7 @@ async function wfs53ReviewBackup(id){
   if(ticket!==wfs53ReviewTicket||activeTab!=='settings')return;
   try{
     const result=wfs53ValidateReview(await invoke('preview_backup_restore',{id}));
-    if(ticket!==wfs53ReviewTicket||activeTab!=='settings')return;
+    if(ticket!==wfs53ReviewTicket||activeTab!=='settings'){if(wfs53PreviewLease?.token===result?.token)wfs53PreviewLease=null;return;}
     if(!result)throw Error('Invalid backup review');
     wfs53Review={id,result};const host=$('#wfs53-restore-rows');
     for(const key of ['tasks','notes','events','habits','links']){
@@ -132,6 +145,24 @@ function wfs53RenderModuleContext(){
   const values={home:s.open+' open · '+s.today+' events today',todos:s.overdue+' overdue · '+s.open+' open',notes:s.notes+' saved notes',calendar:s.today+' events intersect today',health:'Targets stored locally',habits:s.checkins+' / '+s.habits+' checked in',dock:s.links+' pinned links · '+shelfEntries.length+' Shelf records',day:s.today+' events · '+s.overdue+' overdue tasks',timer:'Custom duration · local state',countdown:'Independent timer',system:nativeInvoke?'Windows · on-demand data':'Native data unavailable in preview',media:nativeInvoke?'Selected-session controls':'Native player unavailable in preview',weather:'Explicit request only',flashcards:'Session-based review',tools:'Offline utilities',settings:'Local state and privacy'};
   for(const [key,value] of Object.entries(values)){const el=document.querySelector('#panel-'+key+' .wfs53-context-value');if(el&&el.textContent!==value)el.textContent=value;}
 }
+function wfs53RenderDeadlines(){
+  const set=$('#wfs53-deadline-set'),clear=$('#wfs53-deadline-clear');if(!set||!clear)return;
+  const selected=[...wfs52Selection.keys()],rows=(data.todos||[]).filter(t=>wfs52Selection.has(t.id));
+  const blocked=appDataLoadStatus!=='ready'||wfs52TaskPending||!selected.length||rows.length!==selected.length||rows.some(t=>t.done||t.recurrence);
+  clear.disabled=blocked;set.disabled=blocked||!$('#wfs53-deadline').value;
+  $('#wfs53-deadline-status').textContent=rows.some(t=>t.recurrence)?'Repeating tasks selected: edit their schedules individually.':selected.length+' selected for deadline change; priorities remain unchanged.';
+}
+async function wfs53ApplyDeadlines(clear){
+  if(wfs52TaskPending||!wfs52Selection.size)return;
+  let due;try{due=clear?null:parseTaskDue($('#wfs53-deadline').value);if(!clear&&due===null)return;wfs53DeadlinePlan(data.todos,[...wfs52Selection.values()],due);}
+  catch(e){showError(e);return;}
+  const changes=[...wfs52Selection.values()];
+  if(!confirm((clear?'Clear deadlines for ':'Set a shared deadline for ')+changes.length+' selected open non-repeating tasks? Existing snooze times will be cleared for changed tasks.'))return;
+  wfs52TaskPending=true;wfs52RenderTasks();
+  try{if(await mutation('set_task_deadlines',{changes,dueAtMs:due})){wfs52Selection.clear();showInfo('Task deadlines updated in one transaction.');}}
+  finally{wfs52TaskPending=false;wfs52RenderTasks();}
+}
+
 function wfs53Init(){
   for(const [key,[tag,title,target,action]] of Object.entries(wfs53ModuleInfo)){
     const panel=$('#panel-'+key);if(!panel||panel.querySelector('.wfs53-context'))continue;
@@ -144,6 +175,9 @@ function wfs53Init(){
   apply.addEventListener('click',()=>void wfs53ApplyRestore());
   $('#wfs53-restore-cancel').addEventListener('click',()=>wfs53ClearReview());
   $('#wfs53-shelf-note').addEventListener('click',()=>void wfs53CreateShelfNote());
-  wfs53RenderModuleContext();wfs53ShelfNoteState();
+  $('#wfs53-deadline').addEventListener('input',wfs53RenderDeadlines);
+  $('#wfs53-deadline-set').addEventListener('click',()=>void wfs53ApplyDeadlines(false));
+  $('#wfs53-deadline-clear').addEventListener('click',()=>void wfs53ApplyDeadlines(true));
+  wfs53RenderModuleContext();wfs53ShelfNoteState();wfs53RenderDeadlines();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wfs53Init,{once:true});else wfs53Init();

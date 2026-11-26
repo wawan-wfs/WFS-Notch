@@ -117,7 +117,7 @@ let wfs52Selection=new Map(),wfs52TaskPending=false,wfs52ShelfReview=null,wfs52S
 function wfs52RenderTasks(){
   const host=$('#wfs52-task-list');if(!host)return;
   const status=$('#wfs52-task-status'),apply=$('#wfs52-task-apply');
-  if(appDataLoadStatus!=='ready'){host.replaceChildren();apply.disabled=true;status.textContent='Local data unavailable.';return;}
+  if(appDataLoadStatus!=='ready'){host.replaceChildren();apply.disabled=true;status.textContent='Local data unavailable.';if(typeof wfs53RenderDeadlines==='function')wfs53RenderDeadlines();return;}
   const term=$('#wfs52-task-search').value.trim().toLowerCase(),visible=(data.todos||[]).filter(t=>!t.done&&String(t.title).toLowerCase().includes(term)).slice(0,50);
   let stale=0;
   for(const [id,c] of wfs52Selection){
@@ -139,6 +139,7 @@ function wfs52RenderTasks(){
   if(!visible.length)host.append(node('p','empty','No matching open tasks.'));
   status.textContent=(stale?stale+' stale selection(s) removed. ':'')+wfs52Selection.size+' selected (including hidden matches); showing up to 50 open tasks.';
   apply.disabled=wfs52TaskPending||!wfs52Selection.size;
+  if(typeof wfs53RenderDeadlines==='function')wfs53RenderDeadlines();
 }
 function wfs52InvalidateShelf(){
   wfs52ShelfReview=null;const b=$('#wfs52-shelf-apply');if(b)b.disabled=true;
