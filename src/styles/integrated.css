@@ -18,3 +18,5 @@
 #panel-tools #phase51-lap-stats{overflow-wrap:anywhere}
 #panel-settings #wfs52-data-summary{padding:8px;border:1px solid var(--line);border-radius:8px}
 @media(forced-colors:active){.wfs52-select-row{border-color:ButtonText}}
+
+.wfs52-file-content{max-height:210px;overflow:auto;border-radius:8px}.wfs52-file-text{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;padding:9px;font:11px/1.5 Consolas,monospace;color:var(--text);background:var(--panel)}.wfs52-file-image{display:block;max-width:100%;max-height:200px;object-fit:contain;margin:auto}#wfs52-file-select{max-width:100%}

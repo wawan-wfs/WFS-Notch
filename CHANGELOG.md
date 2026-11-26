@@ -1,5 +1,11 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Integrated batch — native volume and session file content
+
+- Native Windows Core Audio default multimedia output read, explicit volume/mute, short-lived single-use endpoint lease, revalidation and readback. No recording, automatic changes, or raw IDs in frontend/persistence.
+- Bounded text and PNG preview of explicitly selected local session files; no paths, upload, persistence, active content or file mutations. Clear on leaving workspace or release; metadata stays intact.
+- 18 additional model assertions and expanded full-browser regression; native Windows runtime and new Rust build still pending. No intermediate CI push.
+
 ## Integrated batch — connected workflows and final gate
 
 - Copy selected-day agenda with explicit consent and bounded output; filtered flashcard review queue; forget saved weather city; local backup/state summary. Improve module-specific layout surfaces across all 16 modules without removing existing controls.

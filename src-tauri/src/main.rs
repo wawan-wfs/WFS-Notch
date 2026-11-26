@@ -2557,6 +2557,8 @@ fn main() {
             system_details::get_system_details,
             system_details::get_device_diagnostics,
             system_details::get_audio_inventory,
+            system_details::get_default_output_volume,
+            system_details::set_default_output_volume,
             media_sessions::get_active_media_session,
             media_sessions::get_media_session_by_source,
             media_sessions::list_media_sessions,

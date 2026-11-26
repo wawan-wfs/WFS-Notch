@@ -680,6 +680,7 @@ function setExpanded(expanded) {
       $('#expanded').hidden = !expanded;
       $('#collapsed').setAttribute('aria-expanded', String(expanded));
       if (expanded) render();
+      else if(typeof wfs52ClearFilePreview==='function')wfs52ClearFilePreview();
     } catch (error) { showError(error); }
   });
   windowQueue = task;
@@ -710,6 +711,7 @@ async function switchTab(tab) {
   if (typeof wfsSyncNavigation === 'function') wfsSyncNavigation();
   if (typeof phase47SyncNav === 'function') phase47SyncNav();
   if (tab !== 'home' && typeof wfs50ClearSearch === 'function' && !wfs50SearchNavigating) wfs50ClearSearch();
+  if (tab !== 'dock' && typeof wfs52ClearFilePreview === 'function') wfs52ClearFilePreview();
   if (tab === 'settings') void refreshBackups();
   if (tab === 'system') void refreshTelemetry();
   return true;

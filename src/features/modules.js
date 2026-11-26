@@ -298,6 +298,7 @@ function shelfCommit(next) {
   try {
     if (shelfRemember) shelfPersist(localStorage,true,next);
     shelfEntries = next;
+    if(typeof wfs52PruneHandles==='function')wfs52PruneHandles(next);
     return true;
   } catch {
     shelfStatus('Storage write failed. Shelf was not changed. Disable remembering to continue without persistence.');
@@ -325,6 +326,7 @@ function renderShelf(focusIndex = null) {
   $('#shelf-copy-names').disabled = !visible.length;
   if($('#phase50-shelf-copy'))$('#phase50-shelf-copy').disabled=!visible.length;
   if(typeof wfs52InvalidateShelf==='function')wfs52InvalidateShelf();
+  if(typeof wfs52RenderFileChoices==='function')wfs52RenderFileChoices();
   if (!visible.length) list.append(node('div','empty',shelfEntries.length ? 'No matching files.' : 'Shelf is empty.'));
   visible.forEach(({item,index},position) => {
     const line = node('div','module-item');
@@ -369,9 +371,11 @@ function initShelf() {
     shelfStatus('Saved Shelf could not be read. Nothing restored. Use Forget saved Shelf to remove invalid data.');
   }
   input.addEventListener('change', () => {
-    const result = shelfAdd(shelfEntries,input.files || []);
+    const files = Array.from(input.files || []);
+    const result = shelfAdd(shelfEntries,files);
     input.value = '';
     if (!shelfCommit(result.entries)) return;
+    if(typeof wfs52AttachFiles==='function')wfs52AttachFiles(result.entries,files);
     shelfStatus(result.added + ' added; ' + result.skipped + ' skipped (duplicate, invalid or capacity).');
     renderShelf();
   });
