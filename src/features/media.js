@@ -9,12 +9,13 @@ let mediaSessionChoices = [];
 let mediaControlPending = false;
 let mediaRefreshRequested = false;
 let mediaNeedsSelection = false;
+let mediaReadSequence = 0;
 function mediaTime(ms) {
   if (!Number.isFinite(ms) || ms < 0) return '—';
   const secs = Math.floor(ms / 1000);
   return String(Math.floor(secs / 60)).padStart(2, '0') + ':' + String(secs % 60).padStart(2, '0');
 }
-function renderMediaDetails(snapshot) {
+function renderMediaDetails(snapshot, readSequence = 0) {
   const track = document.querySelector('#media-track-title');
   const artist = document.querySelector('#media-track-artist');
   const source = document.querySelector('#media-track-source');
@@ -26,7 +27,7 @@ function renderMediaDetails(snapshot) {
   const card = document.querySelector('#now-playing');
   mediaLastSample = snapshot;
   mediaLastSampleAt = Date.now();
-  if(typeof wfs55ObserveMedia==='function')wfs55ObserveMedia(snapshot);
+  if(typeof wfs55ObserveMedia==='function')wfs55ObserveMedia(snapshot,readSequence);
   if (!snapshot) {
     track.textContent = 'No active media session';
     artist.textContent = nativeInvoke ? 'Start music in a supported Windows player.' : 'Track metadata requires the installed Windows desktop application.';
@@ -67,6 +68,7 @@ async function refreshMediaDetails(force = false) {
   if (!panel?.classList.contains('active')) return;
   if (!force && Date.now() - mediaDetailsLastAt < 5000) return;
   mediaDetailsPending = true;
+  const readSequence=++mediaReadSequence;
   try {
     const active = await readMediaWithDeadline('get_active_media_session');
     const sessions = await readMediaWithDeadline('list_media_sessions');
@@ -94,7 +96,7 @@ async function refreshMediaDetails(force = false) {
         'Selected session disconnected. Choose a player explicitly.';
       return;
     }
-    renderMediaDetails(snapshot);
+    renderMediaDetails(snapshot,readSequence);
     mediaDetailsLastAt = Date.now();
   } catch (error) {
     renderMediaDetails(null);

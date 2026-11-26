@@ -99,7 +99,7 @@ async function wfs55OsAction(action){
       wfs55OsAllowed=true;status.textContent='Session allowed. Choose Read current notifications; no automatic collection.';
     }else{
       if(result!=='allowed'&&wfs55OsAllowed)wfs55StopOs();
-      status.textContent=wfs55OsMessages[result]||'Windows access could not be verified.';
+      status.textContent=result==='allowed'&&wfs55OsAllowed?'Windows permission still allowed for this session. Read only on request.':wfs55OsMessages[result]||'Windows access could not be verified.';
     }
   }catch{
     if(ticket===wfs55OsTicket){wfs55StopOs();status.textContent='Windows access or read unavailable. Session cleared; explicitly allow again to retry.';}
@@ -170,11 +170,11 @@ function wfs55ClearMedia(){
 function wfs55StartMediaObservation(source,action,accepted){
   wfs55ClearMedia();const status=$('#wfs55-media-observation');if(!status||activeTab!=='media'||!isExpanded)return;
   if(!accepted){status.textContent='Player declined command; no playback confirmation.';return;}
-  wfs55MediaReceipt={source,action,at:Date.now()};
+  wfs55MediaReceipt={source,action,at:Date.now(),minSequence:mediaReadSequence+1};
   status.textContent='Command accepted; waiting for a fresh Windows playback observation.';
 }
-function wfs55ObserveMedia(sample){
-  if(!wfs55MediaReceipt||activeTab!=='media'||!isExpanded)return;
+function wfs55ObserveMedia(sample,readSequence){
+  if(!wfs55MediaReceipt||activeTab!=='media'||!isExpanded||readSequence<wfs55MediaReceipt.minSequence)return;
   const result=wfs55MediaResult(wfs55MediaReceipt,sample,Date.now()),status=$('#wfs55-media-observation');
   if(result==='matched'){status.textContent='Observed matching Windows playback state: '+sample.playback_status+'. Readback, not proof of causation.';wfs55MediaReceipt=null;}
   else if(result==='different')status.textContent='Windows currently reports '+sample.playback_status+'; requested state not yet observed.';
@@ -198,6 +198,7 @@ function wfs55Init(){
   $('#wfs55-bundle-review').addEventListener('click',()=>void wfs55ReviewBundle());
   $('#wfs55-bundle-copy').addEventListener('click',()=>void wfs55CopyBundle());
   $('#wfs55-bundle-clear').addEventListener('click',wfs55ClearBundle);
+  window.addEventListener('focus',()=>{if(wfs55OsAllowed&&activeTab==='settings'&&!wfs55OsBusy)void wfs55OsAction('check');});
   wfs55OsButtons();wfs55ClearAudio();wfs55ClearBundle();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wfs55Init,{once:true});else wfs55Init();

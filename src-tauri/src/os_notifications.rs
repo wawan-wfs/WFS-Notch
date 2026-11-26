@@ -30,13 +30,13 @@ mod platform {
     use super::*;
     use std::io::Read;
     use std::sync::atomic::AtomicBool;
-    use windows::core::HSTRING;
     use windows::ApplicationModel::Package;
     use windows::Data::Xml::Dom::XmlDocument;
     use windows::UI::Notifications::{
         Management::{UserNotificationListener, UserNotificationListenerAccessStatus as Access},
         NotificationKinds,
     };
+    use windows::core::HSTRING;
 
     static BUSY: AtomicBool = AtomicBool::new(false);
 
@@ -62,7 +62,7 @@ mod platform {
             .Id()
             .and_then(|id| id.Name())
             .map_err(|_| "package_unavailable")?;
-        if name.to_string() != "WFSProject.WFSNotch" {
+        if name != "WFSProject.WFSNotch" {
             return Err("package_unavailable");
         }
         let folder = package
@@ -217,6 +217,18 @@ mod platform {
             assert_eq!(clean_name(&"x".repeat(200)).len(), 120);
             assert_eq!(status(Access::Denied), "denied");
         }
+
+        #[test]
+        fn stopped_epoch_cannot_read_notifications() {
+            stop_os_notification_session();
+            let epoch = EPOCH.load(Ordering::SeqCst);
+            assert!(!permitted(epoch));
+            ALLOWED_EPOCH.store(epoch, Ordering::SeqCst);
+            assert!(permitted(epoch));
+            stop_os_notification_session();
+            assert!(!permitted(epoch));
+            assert!(read(epoch).is_err());
+        }
     }
 }
 
@@ -244,6 +256,10 @@ pub async fn request_os_notification_access(app: tauri::AppHandle) -> Result<Str
         let (sender, receiver) = std::sync::mpsc::channel();
         // Initiate on the UI thread; wait for the asynchronous result on a worker.
         app.run_on_main_thread(move || {
+            if EPOCH.load(Ordering::SeqCst) != epoch {
+                let _ = sender.send(Err("session_stopped"));
+                return;
+            }
             let result = platform::listener().and_then(|listener| {
                 listener
                     .RequestAccessAsync()
