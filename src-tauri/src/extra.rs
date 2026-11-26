@@ -97,6 +97,28 @@ pub fn add_habit(store: State<'_, Mutex<Store>>, title: String) -> Result<AppDat
 }
 
 #[tauri::command]
+pub fn rename_habit(
+    store: State<'_, Mutex<Store>>,
+    id: String,
+    expected_title: String,
+    title: String,
+) -> Result<AppData, String> {
+    let title = validate_title(&title)?;
+    with_store(store, |data| {
+        let habit = data
+            .habits
+            .iter_mut()
+            .find(|habit| habit.id == id)
+            .ok_or("Habit not found")?;
+        if habit.title != expected_title {
+            return Err("Habit changed; reopen the editor".into());
+        }
+        habit.title = title;
+        Ok(())
+    })
+}
+
+#[tauri::command]
 pub fn toggle_habit_day(
     store: State<'_, Mutex<Store>>,
     id: String,
@@ -153,6 +175,32 @@ pub fn add_quick_link(
             url,
             created_ms: now_ms(),
         });
+        Ok(())
+    })
+}
+
+#[tauri::command]
+pub fn edit_quick_link(
+    store: State<'_, Mutex<Store>>,
+    id: String,
+    expected_label: String,
+    expected_url: String,
+    label: String,
+    url: String,
+) -> Result<AppData, String> {
+    let label = validate_title(&label)?;
+    let url = validate_url(&url)?;
+    with_store(store, |data| {
+        let link = data
+            .quick_links
+            .iter_mut()
+            .find(|link| link.id == id)
+            .ok_or("Quick link not found")?;
+        if link.label != expected_label || link.url != expected_url {
+            return Err("Quick link changed; reopen the editor".into());
+        }
+        link.label = label;
+        link.url = url;
         Ok(())
     })
 }

@@ -125,6 +125,7 @@ async function clearActivity(clearer=nativeInvoke?()=>invoke('clear_notification
   if(!clearer)return;
   const ticket=++activityRequest;$('#activity-clear').disabled=true;$('#activity-read').disabled=true;
   $('#activity-status').textContent='Clearing local history…';
+  if(typeof wfs52RenderActivityExport==='function')wfs52RenderActivityExport([]);
   try {
     // Do not apply a UI deadline to a mutation that may still commit later.
     if(await clearer()!==true)throw Error('Not cleared');

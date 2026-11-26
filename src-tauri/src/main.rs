@@ -44,6 +44,7 @@ struct Settings {
     task_history_limit: u16,
     // Separate opt-in for the title-free notification activity journal.
     activity_history_limit: u16,
+    health_targets: wellness::HealthTargets,
 }
 impl Default for Settings {
     fn default() -> Self {
@@ -64,6 +65,7 @@ impl Default for Settings {
             high_contrast: false,
             task_history_limit: MAX_TASK_COMPLETIONS,
             activity_history_limit: 0,
+            health_targets: wellness::HealthTargets::default(),
         }
     }
 }
@@ -639,6 +641,9 @@ struct AppData {
 impl AppData {
     fn sanitize(&mut self) {
         notifications::apply_activity_policy(self, now_ms());
+        if !self.settings.health_targets.valid() {
+            self.settings.health_targets = wellness::HealthTargets::default();
+        }
         self.health.water_glasses = self.health.water_glasses.min(40);
         self.health.break_count = self.health.break_count.min(100);
         self.health.calm_minutes = self.health.calm_minutes.min(600);
@@ -1062,16 +1067,13 @@ fn apply_task_priorities(
     changes: &[TaskPriorityChange],
     priority: &str,
 ) -> Result<(), String> {
-    if changes.is_empty()
-        || changes.len() > 50
-        || !matches!(priority, "low" | "normal" | "high")
-    {
+    if changes.is_empty() || changes.len() > 50 || !matches!(priority, "low" | "normal" | "high") {
         return Err("Choose 1–50 open tasks and a supported priority".into());
     }
     let mut seen = HashSet::new();
     // Validate the entire selection before changing any task.
     for change in changes {
-        if !seen.insert(&change.id) {
+        if !seen.insert(change.id.as_str()) {
             return Err("Duplicate task in priority selection".into());
         }
         let todo = state
@@ -1087,7 +1089,7 @@ fn apply_task_priorities(
         }
     }
     for todo in &mut state.todos {
-        if seen.contains(&todo.id) && todo.priority != priority {
+        if seen.contains(todo.id.as_str()) && todo.priority != priority {
             todo.priority = priority.to_owned();
             todo.change_token = Some(new_id());
         }
@@ -2586,9 +2588,11 @@ fn main() {
             display::set_display_preference,
             close_app,
             extra::add_habit,
+            extra::rename_habit,
             extra::toggle_habit_day,
             extra::remove_habit,
             extra::add_quick_link,
+            extra::edit_quick_link,
             extra::remove_quick_link,
             extra::open_quick_link,
             extra::launch_builtin,
@@ -2596,6 +2600,7 @@ fn main() {
             extra::get_autostart,
             extra::set_autostart,
             wellness::health_action,
+            wellness::set_health_targets,
             wellness::countdown_set,
             wellness::countdown_toggle,
             wellness::countdown_adjust,

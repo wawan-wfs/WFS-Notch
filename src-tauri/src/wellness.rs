@@ -12,6 +12,46 @@ pub struct HealthState {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
+pub struct HealthTargets {
+    pub water: u16,
+    pub breaks: u16,
+    pub calm: u16,
+}
+
+impl Default for HealthTargets {
+    fn default() -> Self {
+        Self {
+            water: 8,
+            breaks: 3,
+            calm: 5,
+        }
+    }
+}
+
+impl HealthTargets {
+    pub fn valid(&self) -> bool {
+        (1..=30).contains(&self.water)
+            && (1..=24).contains(&self.breaks)
+            && (1..=180).contains(&self.calm)
+    }
+}
+
+#[tauri::command]
+pub fn set_health_targets(
+    store: State<'_, Mutex<Store>>,
+    targets: HealthTargets,
+) -> Result<AppData, String> {
+    if !targets.valid() {
+        return Err("Personal targets outside supported range".into());
+    }
+    with_store(store, |data| {
+        data.settings.health_targets = targets;
+        Ok(())
+    })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
 pub struct CountdownState {
     pub duration_seconds: u64,
     pub remaining_seconds: u64,
@@ -90,22 +130,14 @@ fn valid_countdown_presets(presets: &[u64; 3]) -> bool {
 }
 
 fn valid_day(day: &str) -> bool {
-    let bytes = day.as_bytes();
-    bytes.len() == 10
-        && bytes[4] == b'-'
-        && bytes[7] == b'-'
-        && bytes
-            .iter()
+    day.len() == 10
+        && day.as_bytes()[4] == b'-'
+        && day.as_bytes()[7] == b'-'
+        && day
+            .bytes()
             .enumerate()
             .all(|(i, b)| i == 4 || i == 7 || b.is_ascii_digit())
-        && day
-            .get(5..7)
-            .and_then(|v| v.parse::<u8>().ok())
-            .is_some_and(|m| (1..=12).contains(&m))
-        && day
-            .get(8..10)
-            .and_then(|v| v.parse::<u8>().ok())
-            .is_some_and(|d| (1..=31).contains(&d))
+        && chrono::NaiveDate::parse_from_str(day, "%Y-%m-%d").is_ok()
 }
 
 #[tauri::command]
@@ -136,6 +168,12 @@ pub fn health_action(
             }
             "calm_plus" => {
                 data.health.calm_minutes = data.health.calm_minutes.saturating_add(1).min(600);
+            }
+            "break_minus" => {
+                data.health.break_count = data.health.break_count.saturating_sub(1);
+            }
+            "calm_minus" => {
+                data.health.calm_minutes = data.health.calm_minutes.saturating_sub(1);
             }
             _ => return Err("Unknown health action".into()),
         }
@@ -222,6 +260,26 @@ mod tests {
         assert!(!valid_day("2026-13-07"));
         assert!(!valid_day("2026/11/07"));
         assert!(!valid_day("2026-11-00"));
+        assert!(!valid_day("2026-02-29"));
+        assert!(valid_day("2024-02-29"));
+    }
+
+    #[test]
+    fn health_targets_migrate_and_validate() {
+        let defaults: HealthTargets = serde_json::from_str("{}").unwrap();
+        assert!(defaults.valid());
+        assert_eq!(defaults.water, 8);
+        let mut targets = HealthTargets {
+            water: 10,
+            breaks: 4,
+            calm: 15,
+        };
+        assert!(targets.valid());
+        let restored: HealthTargets =
+            serde_json::from_str(&serde_json::to_string(&targets).unwrap()).unwrap();
+        assert_eq!(restored, targets);
+        targets.water = 31;
+        assert!(!targets.valid());
     }
 
     #[test]

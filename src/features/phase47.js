@@ -50,6 +50,7 @@ function phase47RenderPolicy() {
     if (typeof activityRequest!=='undefined') {
       activityRequest++; activityRows=[];
       if(typeof activitySnapshotAvailable!=='undefined')activitySnapshotAvailable=false;
+      if(typeof wfs52RenderActivityExport==='function')wfs52RenderActivityExport([]);
       $('#activity-list').replaceChildren();
       const summary=$('#phase48-activity-summary');
       if(summary)summary.textContent='No activity snapshot available.';

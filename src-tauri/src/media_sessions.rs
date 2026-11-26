@@ -512,9 +512,9 @@ fn valid_seek_request(r: &SeekRequest) -> bool {
         && r.source.len() <= 256
         && !r.source.chars().any(char::is_control)
         && !r.title.trim().is_empty()
-        && [&r.title, &r.artist, &r.album]
-            .iter()
-            .all(|s| s.len() <= 4096)
+        && r.title.len() <= 4096
+        && r.artist.len() <= 4096
+        && r.album.len() <= 4096
         && (1..=604_800_000).contains(&r.duration_ms)
         && r.position_ms <= r.duration_ms
 }

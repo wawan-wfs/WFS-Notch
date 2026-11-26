@@ -33,7 +33,22 @@ function wfs52ActivityCsv(rows){
   return 'timestamp_utc,kind,outcome,attempt\n'+safe.map(r=>[new Date(r.at_ms).toISOString(),r.kind,r.outcome,r.attempt].join(',')).join('\n');
 }
 
-let wfs52Selection=new Map(),wfs52TaskPending=false,wfs52ShelfReview=null,wfs52SeekKey='',wfs52SeekEdited=false;
+function wfs52EditTitle(raw){
+  if(typeof raw!=='string'||!raw.trim()||[...raw.trim()].length>120)throw Error('Title must contain 1–120 characters');
+  return raw.trim();
+}
+function wfs52LinkFields(label,raw){
+  label=wfs52EditTitle(label);
+  if(typeof raw!=='string'||raw.trim().length>2048||/\s/u.test(raw.trim()))throw Error('Invalid URL');
+  const url=new URL(raw.trim());
+  if(!['http:','https:'].includes(url.protocol)||!url.hostname||url.username||url.password)throw Error('Only http(s) links without credentials are allowed');
+  return {label,url:url.href};
+}
+function wfs52EditSignature(item,type){
+  return item?JSON.stringify(type==='habit'?[item.id,item.title]:[item.id,item.label,item.url]):'';
+}
+
+let wfs52Selection=new Map(),wfs52TaskPending=false,wfs52ShelfReview=null,wfs52SeekKey='',wfs52SeekEdited=false,wfs52SeekFeedback='';
 function wfs52RenderTasks(){
   const host=$('#wfs52-task-list');if(!host)return;
   const status=$('#wfs52-task-status'),apply=$('#wfs52-task-apply');
@@ -77,12 +92,12 @@ function wfs52RenderSeek(){
   const snapshot=mediaLastSample,choice=mediaSessionChoices.find(x=>x.source===$('#media-player-picker').value);
   const request=wfs52SeekRequest(snapshot,choice,0,Date.now()-mediaLastSampleAt);
   const key=request?JSON.stringify([request.source,request.title,request.artist,request.album,request.duration_ms]):'';
-  if(key!==wfs52SeekKey){wfs52SeekKey=key;wfs52SeekEdited=false;}
+  if(key!==wfs52SeekKey){wfs52SeekKey=key;wfs52SeekEdited=false;wfs52SeekFeedback='';}
   const enabled=!!nativeInvoke&&!!request&&!mediaControlPending&&!mediaNeedsSelection;
   input.disabled=!enabled;apply.disabled=!enabled||!wfs52SeekEdited;
-  if(!enabled){status.textContent='Seek unavailable: requires a fresh uniquely selected seekable Windows track.';return;}
+  if(!enabled){status.textContent=mediaControlPending?'Waiting for selected player…':'Seek unavailable: requires a fresh uniquely selected seekable Windows track.';return;}
   input.max=String(request.duration_ms);
-  if(!wfs52SeekEdited){input.value=String(Math.min(request.duration_ms,Math.max(0,Math.round(snapshot.position_ms||0))));status.textContent='Choose a position and apply.';}
+  if(!wfs52SeekEdited){input.value=String(Math.min(request.duration_ms,Math.max(0,Math.round(snapshot.position_ms||0))));status.textContent=wfs52SeekFeedback||'Choose a position and apply.';}
   $('#wfs52-seek-value').textContent=mediaTime(Number(input.value))+' / '+mediaTime(request.duration_ms);
 }
 async function wfs52ApplySeek(){
@@ -95,18 +110,65 @@ async function wfs52ApplySeek(){
   for(const b of $$('[data-selected-media]'))b.disabled=true;
   try{
     const accepted=await invoke('seek_media_session',{request});
-    status.textContent=accepted?'Seek accepted by Windows player; refresh verifies actual position.':'Player did not accept seek.';
-  }catch(e){status.textContent='Seek refused or unavailable. Refresh the selected track.';showError(e);}
+    wfs52SeekFeedback=accepted?'Seek accepted by Windows player; inspect refreshed position.':'Player did not accept seek.';
+  }catch(e){wfs52SeekFeedback='Seek refused or unavailable. Refresh the selected track.';showError(e);}
   finally{mediaControlPending=false;await refreshMediaDetails(true);wfs52RenderSeek();}
 }
 function wfs52RenderActivityExport(rows){
   const button=$('#wfs52-activity-export');if(!button)return;
   button.disabled=!rows.length||!activitySnapshotAvailable;
+  button.onclick=null;
+  if(button.disabled)return;
   button.onclick=async()=>{
-    if(!activitySnapshotAvailable||!confirm('Copy shown notification activity metadata? No titles or bodies.'))return;
-    try{await navigator.clipboard.writeText(wfs52ActivityCsv(rows));$('#activity-status').textContent='Copied shown activity metadata.';}catch{showError('Clipboard unavailable.');}
+    if(!activitySnapshotAvailable||!phase47Limit(data.settings?.activity_history_limit)||!confirm('Copy shown notification activity metadata? No titles or bodies.'))return;
+    const current=plannerActivityWindow(wfs50RetainedActivity(activityRows,Date.now()),$('#phase49-activity-window').value,Date.now()).filter(row=>($('#activity-kind').value==='all'||row.kind===$('#activity-kind').value)&&($('#activity-outcome').value==='all'||row.outcome===$('#activity-outcome').value));
+    if(!current.length)return;
+    try{await navigator.clipboard.writeText(wfs52ActivityCsv(current));$('#activity-status').textContent='Copied shown activity metadata.';}catch{showError('Clipboard unavailable.');}
   };
 }
+const wfs52Editors={habit:{sig:'',original:null,pending:false,options:''},link:{sig:'',original:null,pending:false,options:''}};
+function wfs52RenderEditors(){
+  for(const type of ['habit','link']){
+    const select=$('#wfs52-'+type+'-select');if(!select)continue;
+    const editor=wfs52Editors[type],items=appDataLoadStatus==='ready'?(type==='habit'?data.habits:data.quick_links)||[]:[];
+    const signature=JSON.stringify(items.map(x=>[x.id,type==='habit'?x.title:x.label]));
+    if(signature!==editor.options){
+      const old=select.value;select.replaceChildren(new Option('Choose an item',''),...items.map(x=>new Option(type==='habit'?x.title:x.label,x.id)));
+      select.value=items.some(x=>x.id===old)?old:'';editor.options=signature;
+    }
+    const current=items.find(x=>x.id===select.value);
+    const valid=!!current&&editor.sig===wfs52EditSignature(current,type)&&!editor.pending;
+    $('#wfs52-'+type+'-apply').disabled=!valid;
+    $('#wfs52-'+type+'-load').disabled=!current||editor.pending;
+    if(editor.original&&!valid&&!editor.pending)$('#wfs52-'+type+'-status').textContent='Item changed or selection moved. Load it again before saving.';
+  }
+}
+function wfs52LoadEditor(type){
+  const items=type==='habit'?data.habits:data.quick_links,editor=wfs52Editors[type];
+  const item=items.find(x=>x.id===$('#wfs52-'+type+'-select').value);
+  if(!item||editor.pending)return;
+  editor.original={...item};editor.sig=wfs52EditSignature(item,type);
+  $('#wfs52-'+type+'-title').value=type==='habit'?item.title:item.label;
+  if(type==='link')$('#wfs52-link-url').value=item.url;
+  $('#wfs52-'+type+'-status').textContent='Editing selected item. History and ID will be retained.';
+  wfs52RenderEditors();
+}
+async function wfs52SaveEditor(type){
+  const editor=wfs52Editors[type],original=editor.original,status=$('#wfs52-'+type+'-status');
+  if(!original||editor.pending||$('#wfs52-'+type+'-apply').disabled)return;
+  let args,command;
+  try{
+    const title=$('#wfs52-'+type+'-title').value;
+    if(type==='habit'){args={id:original.id,expectedTitle:original.title,title:wfs52EditTitle(title)};command='rename_habit';}
+    else{args={id:original.id,expectedLabel:original.label,expectedUrl:original.url,...wfs52LinkFields(title,$('#wfs52-link-url').value)};command='edit_quick_link';}
+  }catch(e){status.textContent=e.message;return;}
+  editor.pending=true;wfs52RenderEditors();
+  try{
+    if(await mutation(command,args)){editor.original=null;editor.sig='';status.textContent='Saved. Existing item ID and history retained.';}
+    else status.textContent='Save failed. Reload current item before retrying.';
+  }finally{editor.pending=false;wfs52RenderEditors();}
+}
+
 function wfs52Init(){
   const form=$('#wfs52-task-form');if(!form||form.dataset.ready==='true')return;form.dataset.ready='true';
   $('#wfs52-task-search').addEventListener('input',wfs52RenderTasks);
@@ -127,10 +189,15 @@ function wfs52Init(){
     if(!confirm('Add '+r.result.added+' metadata records to Shelf?'))return;
     if(shelfCommit(r.result.entries)){wfs52InvalidateShelf();$('#wfs52-shelf-json').value='';$('#wfs52-shelf-status').textContent='Metadata added; original files unchanged.';renderShelf();}
   });
-  $('#wfs52-seek').addEventListener('input',()=>{wfs52SeekEdited=true;wfs52RenderSeek();});
+  $('#wfs52-seek').addEventListener('input',()=>{wfs52SeekEdited=true;wfs52SeekFeedback='';wfs52RenderSeek();});
   $('#wfs52-seek-apply').addEventListener('click',()=>void wfs52ApplySeek());
   $('#wfs52-sound-settings').addEventListener('click',async()=>{if(!nativeInvoke){showInfo('Requires Windows desktop app.');return;}try{await invoke('launch_builtin',{appName:'sound_settings'});}catch(e){showError(e);}});
   $('#wfs52-notification-settings').addEventListener('click',async()=>{if(!nativeInvoke){showInfo('Requires Windows desktop app.');return;}try{await invoke('launch_builtin',{appName:'notification_settings'});}catch(e){showError(e);}});
-  wfs52RenderTasks();wfs52RenderSeek();
+  for(const type of ['habit','link']){
+    $('#wfs52-'+type+'-select').addEventListener('change',wfs52RenderEditors);
+    $('#wfs52-'+type+'-load').addEventListener('click',()=>wfs52LoadEditor(type));
+    $('#wfs52-'+type+'-form').addEventListener('submit',e=>{e.preventDefault();void wfs52SaveEditor(type);});
+  }
+  wfs52RenderTasks();wfs52RenderSeek();wfs52RenderEditors();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wfs52Init,{once:true});else wfs52Init();

@@ -70,7 +70,7 @@ function wfs51RainWindow(forecast,threshold){
   return {hours:unique.length,peak:unique.length?Math.max(...unique.map(r=>r.p)):null,above:unique.filter(r=>r.p>=threshold)};
 }
 
-let wfs51Targets={water:8,breaks:3,calm:5},wfs51LastNetwork=null,wfs51Weather=null,wfs51LapSignature='';
+let wfs51Targets={water:8,breaks:3,calm:5},wfs51TargetSignature='',wfs51LastNetwork=null,wfs51Weather=null,wfs51LapSignature='';
 function wfs51RenderTimers(){
   const focus=$('#phase51-focus-end'),count=$('#phase51-countdown-end');if(!focus||!count)return;
   const now=Date.now(),fmt=x=>new Date(x).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
@@ -86,6 +86,10 @@ function wfs51RenderHealth(){
   const host=$('#phase51-health-progress');if(!host)return;
   host.replaceChildren();
   if(appDataLoadStatus!=='ready')return;
+  const targets=wfs51HealthTargets(data.settings?.health_targets)||{water:8,breaks:3,calm:5};
+  wfs51Targets=targets;
+  const signature=JSON.stringify(targets);
+  if(signature!==wfs51TargetSignature){wfs51TargetSignature=signature;for(const key of ['water','breaks','calm'])$('#phase51-'+key).value=String(targets[key]);}
   for(const r of wfs51HealthProgress(todayHealth(),wfs51Targets)){
     const row=node('div','phase51-goal'),label=node('span','',r.key+' · '+r.count+' / '+r.target);
     const meter=node('progress','');meter.max=1;meter.value=r.fraction;meter.setAttribute('aria-label',r.key+' personal target');
@@ -138,9 +142,11 @@ function wfs51Init(){
     await mutation('set_focus_duration',{minutes});wfs51RenderTimers();
   });
   $('#phase51-focus-minutes').addEventListener('input',wfs51RenderTimers);
-  $('#phase51-health-form').addEventListener('submit',e=>{
+  $('#phase51-health-form').addEventListener('submit',async e=>{
     e.preventDefault();const value=wfs51HealthTargets({water:Number($('#phase51-water').value),breaks:Number($('#phase51-breaks').value),calm:Number($('#phase51-calm').value)});
-    if(!value)return;wfs51Targets=value;wfs51RenderHealth();$('#phase51-health-status').textContent='Personal targets updated for this app session only.';
+    if(!value||appDataLoadStatus!=='ready')return;
+    const button=$('#phase51-health-form button[type=submit]');if(button.disabled)return;button.disabled=true;
+    try{const ok=await mutation('set_health_targets',{targets:value});$('#phase51-health-status').textContent=ok?'Personal targets updated and saved locally.':'Targets not saved; previous targets retained.';}finally{button.disabled=false;}
   });
   $('#phase51-network-clear').addEventListener('click',wfs51ClearNetwork);
   $('#phase51-rain-threshold').addEventListener('change',wfs51RenderRain);

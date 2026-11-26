@@ -1,5 +1,11 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Integrated batch — persistence and editing
+
+- Persist personal health targets in native Settings and browser preview; legacy migration, strict civil dates and corrections for break/calm counts.
+- Edit pinned website and rename habits without changing IDs or check-in history, with optimistic stale-edit guards.
+- Improve seek command feedback and activity export invalidation on privacy changes. Add 10 editor model assertions. No intermediate CI push.
+
 ## Integrated batch — native control and transactional workspaces
 
 - Phase 51 baseline run 45758871969: all jobs passed, 123 Rust tests and 80 matrix screenshots.

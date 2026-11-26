@@ -10,7 +10,7 @@ const defaults = () => ({
   todos: [], task_completions: [], notes: [], events: [], calendar_tombstones: [], calendar_series: {}, reminder_retries: {}, habits: [], quick_links: [],
   health: { day: '', water_glasses: 0, break_count: 0, calm_minutes: 0 },
   countdown: { duration_seconds: 300, remaining_seconds: 300, ends_at_ms: null, completed: false, preset_minutes: [5, 15, 30] },
-  settings: { accent: '#d6b77a', hover_to_open: true, pin_open: false, monitor_id: 'primary', top_margin_px: 12, notifications_enabled: false, notifications_show_details: false, notifications_paused: false, task_due_reminders_enabled: false, always_on_top: true, auto_lower_fullscreen: false, ui_density: 'comfortable', reduce_motion: false, high_contrast: false, task_history_limit: 200, activity_history_limit: 0 },
+  settings: { accent: '#d6b77a', hover_to_open: true, pin_open: false, monitor_id: 'primary', top_margin_px: 12, notifications_enabled: false, notifications_show_details: false, notifications_paused: false, task_due_reminders_enabled: false, always_on_top: true, auto_lower_fullscreen: false, ui_density: 'comfortable', reduce_motion: false, high_contrast: false, task_history_limit: 200, activity_history_limit: 0, health_targets: {water:8,breaks:3,calm:5} },
   focus: { duration_seconds: 1500, remaining_seconds: 1500, ends_at_ms: null, completed: false, paused: false, cycle_enabled: false, phase: 'focus', completed_in_cycle: 0 },
 });
 let data = defaults();
@@ -194,6 +194,7 @@ function previewInvoke(command, args = {}) {
     state = raw ? JSON.parse(raw) : defaults();
   } catch (error) { throw new Error(`Browser preview data is unreadable: ${error.message}`); }
   state.settings = { ...defaults().settings, ...state.settings };
+  if(typeof wfs51HealthTargets==='function')state.settings.health_targets=wfs51HealthTargets(state.settings.health_targets)||defaults().settings.health_targets;
   state.focus = { ...defaults().focus, ...state.focus };
   state.events = Array.isArray(state.events) ? state.events : [];
   if (![0, 25, 100, 200].includes(state.settings.task_history_limit)) state.settings.task_history_limit = 200;
@@ -496,6 +497,11 @@ function previewInvoke(command, args = {}) {
       if (!title || title.length > 120) throw new Error('Invalid habit name');
       state.habits.push({id: nextId(), title, completed_dates: [], created_ms: Date.now()}); break;
     }
+    case 'rename_habit': {
+      const habit = state.habits.find(item => item.id === args.id);
+      if(!habit||habit.title!==args.expectedTitle)throw new Error('Habit changed; reopen the editor');
+      habit.title=wfs52EditTitle(args.title);break;
+    }
     case 'toggle_habit_day': {
       const habit = state.habits.find(item => item.id === args.id);
       if (!habit || !/^\d{4}-\d{2}-\d{2}$/.test(args.day)) throw new Error('Invalid habit/date');
@@ -514,9 +520,19 @@ function previewInvoke(command, args = {}) {
       if (!label || label.length > 120 || !['https:', 'http:'].includes(parsed.protocol) || parsed.username || parsed.password || raw.length > 2048) throw new Error('Invalid quick link');
       state.quick_links.push({id: nextId(), label, url: parsed.href, created_ms: Date.now()}); break;
     }
+    case 'edit_quick_link': {
+      const link = state.quick_links.find(item => item.id === args.id);
+      if(!link||link.label!==args.expectedLabel||link.url!==args.expectedUrl)throw new Error('Quick link changed; reopen the editor');
+      Object.assign(link,wfs52LinkFields(args.label,args.url));break;
+    }
     case 'remove_quick_link': {
       if (!state.quick_links.some(item => item.id === args.id)) throw new Error('Quick link not found');
       state.quick_links = state.quick_links.filter(item => item.id !== args.id); break;
+    }
+    case 'set_health_targets': {
+      const targets=wfs51HealthTargets(args.targets);
+      if(!targets)throw new Error('Invalid personal targets');
+      state.settings.health_targets=targets;break;
     }
     case 'health_action': {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(args.day)) throw new Error('Invalid health date');
@@ -526,6 +542,8 @@ function previewInvoke(command, args = {}) {
         water_minus: ['water_glasses', -1, 40],
         break_plus: ['break_count', 1, 100],
         calm_plus: ['calm_minutes', 1, 600],
+        break_minus: ['break_count', -1, 100],
+        calm_minus: ['calm_minutes', -1, 600],
       };
       const action = actions[args.action];
       if (!action) throw new Error('Unknown health action');
@@ -1263,6 +1281,7 @@ function render() {
   if (typeof wfs50RenderSearch === 'function') wfs50RenderSearch();
   if (typeof wfs50RenderGaps === 'function') wfs50RenderGaps();
   if (typeof wfs52RenderTasks === 'function') wfs52RenderTasks();
+  if (typeof wfs52RenderEditors === 'function') wfs52RenderEditors();
 }
 
 async function saveRevisionNote(draft) {
