@@ -325,11 +325,13 @@ function wfs52ClearFilePreview(){
   const status=$('#wfs52-file-status');if(status)status.textContent='No content preview. Only explicitly selected session files can be read.';
 }
 function wfs52PruneHandles(records){
+  if(typeof wfs55ClearBundle==='function')wfs55ClearBundle();
   const allowed=new Set(records.map(wfs52ShelfKey));
   for(const key of wfs52ShelfHandles.keys())if(!allowed.has(key))wfs52ShelfHandles.delete(key);
   if(wfs52PreviewKey&&!wfs52ShelfHandles.has(wfs52PreviewKey))wfs52ClearFilePreview();
 }
 function wfs52AttachFiles(records,files){
+  if(typeof wfs55ClearBundle==='function')wfs55ClearBundle();
   const incoming=wfs52SelectedHandles(records,files);
   // Explicitly reselected files supersede old content for matching metadata.
   for(const file of files){const r=shelfRecord(file);if(r){const key=wfs52ShelfKey(r);if(wfs52ShelfHandles.has(key)){wfs52ShelfHandles.delete(key);if(wfs52PreviewKey===key)wfs52ClearFilePreview();}}}
@@ -413,7 +415,7 @@ function wfs52Init(){
   $('#wfs52-file-select').addEventListener('change',()=>{wfs52ClearFilePreview();wfs52RenderFileChoices();});
   $('#wfs52-file-open').addEventListener('click',()=>void wfs52OpenFile());
   $('#wfs52-file-close').addEventListener('click',wfs52ClearFilePreview);
-  $('#wfs52-file-forget').addEventListener('click',()=>{wfs52ShelfHandles.clear();wfs52ClearFilePreview();wfs52RenderFileChoices();});
+  $('#wfs52-file-forget').addEventListener('click',()=>{if(typeof wfs55ClearBundle==='function')wfs55ClearBundle();wfs52ShelfHandles.clear();wfs52ClearFilePreview();wfs52RenderFileChoices();});
   wfs52RenderTasks();wfs52RenderSeek();wfs52RenderEditors();wfs52RenderAgendaExport();wfs52RenderDataSummary();wfs52RenderVolume();wfs52RenderFileChoices();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wfs52Init,{once:true});else wfs52Init();

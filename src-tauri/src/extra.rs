@@ -258,6 +258,7 @@ pub fn launch_builtin(app_name: String) -> Result<(), String> {
             "paint" => ("mspaint.exe", None),
             "settings" => ("explorer.exe", Some("ms-settings:")),
             "sound_settings" => ("explorer.exe", Some("ms-settings:sound")),
+            "sound_control_panel" => ("control.exe", Some("mmsys.cpl")),
             "notification_settings" => ("explorer.exe", Some("ms-settings:notifications")),
             _ => return Err("Unknown built-in Windows app".into()),
         };

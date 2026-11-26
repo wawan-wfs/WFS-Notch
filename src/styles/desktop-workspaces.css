@@ -1,0 +1,25 @@
+/* WFS Notch workspace system: distinct content hierarchy, existing routes retained. */
+.wfs55-role-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.wfs55-role-card{display:grid;gap:5px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--panel);min-width:0;overflow-wrap:anywhere}
+.wfs55-role-card small{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.4px}.wfs55-role-card b{font-size:20px;font-variant-numeric:tabular-nums}.wfs55-role-card span{font-size:10px;color:var(--muted)}
+.wfs55-notification-rows{max-height:220px;overflow:auto}.wfs55-notification-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;padding:9px;border-bottom:1px solid var(--line);overflow-wrap:anywhere}.wfs55-notification-row span,.wfs55-notification-row small{color:var(--muted);font-size:10px}.wfs55-notification-row small{grid-column:1/-1}
+.wfs55-notifications label{display:grid;gap:4px;color:var(--muted);font-size:11px}.wfs55-notifications input{width:100%;min-width:0}
+.wfs55-bundle-text{max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:10px;border:1px solid var(--line);border-radius:10px;font:11px/1.5 ui-monospace,Consolas,monospace;color:var(--text);background:var(--panel)}
+#panel-home .focus-card{border-radius:14px}#panel-home .home-upcoming{border-top:1px solid var(--line);padding-top:9px}
+#panel-todos .todo-history{border-top:1px solid var(--line);padding-top:10px}
+#panel-notes .note-list{border-right:1px solid var(--line);padding-right:5px}#panel-notes .notes-transfer{border-top:1px solid var(--line);padding-top:9px}
+#panel-calendar .calendar-month-grid{border:1px solid var(--line);border-radius:12px;padding:5px;gap:3px}#panel-calendar .ics-box{border-radius:12px}
+#panel-system .system-grid{grid-template-columns:repeat(auto-fit,minmax(125px,1fr))}#panel-system .wfs55-audio{border-left:3px solid var(--accent)}
+#panel-timer .timer-layout{align-items:center}#panel-timer .focus-cycle-card{border-radius:14px}
+#panel-health .health-grid{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}#panel-health .phase51-form{border-top:1px solid var(--line);padding-top:8px}
+#panel-day .day-summary{display:flex;justify-content:space-between}#panel-day .module-list{border-left:2px solid var(--line);padding-left:8px}
+#panel-countdown .countdown-face{background:linear-gradient(140deg,var(--accent-fade),var(--panel));font-variant-numeric:tabular-nums}#panel-countdown .countdown-editor{border-top:1px solid var(--line);padding-top:8px}
+#panel-weather .weather-current{background:linear-gradient(145deg,var(--accent-fade),var(--panel))}#panel-weather .weather-days{gap:6px}
+#panel-flashcards .flashcard-face{background:linear-gradient(135deg,var(--panel),var(--accent-fade))}#panel-flashcards .tool-actions{flex-wrap:wrap}
+#panel-habits .phase50-habit-scroll{background:var(--panel)}#panel-habits .input-row{gap:7px}
+#panel-dock .launch-grid{grid-template-columns:repeat(auto-fit,minmax(90px,1fr))}#panel-dock .wfs52-details{border-top:1px solid var(--line);padding-top:8px}
+#panel-media .now-playing{background:linear-gradient(140deg,var(--accent-fade),var(--panel))}#panel-media .media-pad{gap:8px}#panel-media .volume-pad{border-top:1px solid var(--line);padding-top:8px}
+#panel-tools .tools-grid{gap:9px}#panel-tools .tool-card .tool-output{overflow-wrap:anywhere}
+#panel-settings .wfs55-notifications{border-left:3px solid var(--accent)}#panel-settings .backup-list{border-top:1px solid var(--line);padding-top:8px}
+@media(max-width:560px){.wfs55-role-grid{grid-template-columns:1fr}.wfs55-role-card{grid-template-columns:minmax(0,1fr) auto;align-items:center}.wfs55-role-card span{grid-column:1/-1}.wfs55-notification-row{grid-template-columns:1fr}#panel-notes .note-list{border-right:0;padding-right:0}}
+@media(forced-colors:active){.wfs55-role-card,.wfs55-notification-row,.wfs55-bundle-text{border-color:ButtonText}}

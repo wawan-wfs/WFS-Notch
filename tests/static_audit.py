@@ -9,9 +9,9 @@ from html.parser import HTMLParser
 root = Path(__file__).resolve().parents[1]
 app = root
 html = (app / 'src/index.html').read_text()
-js = '\n'.join((app / 'src' / filename).read_text() for filename in ('app.js', 'features/modules.js', 'features/wellness.js', 'features/calendar.js', 'features/system.js', 'features/media.js', 'features/accessibility.js', 'features/displays.js', 'features/workspace.js', 'features/phase47.js', 'features/phase48.js', 'features/phase49.js', 'features/phase50.js', 'features/phase51.js', 'features/integrated.js', 'features/continuation.js'))
+js = '\n'.join((app / 'src' / filename).read_text() for filename in ('app.js', 'features/modules.js', 'features/wellness.js', 'features/calendar.js', 'features/system.js', 'features/media.js', 'features/accessibility.js', 'features/displays.js', 'features/workspace.js', 'features/phase47.js', 'features/phase48.js', 'features/phase49.js', 'features/phase50.js', 'features/phase51.js', 'features/integrated.js', 'features/continuation.js', 'features/desktop-workspaces.js'))
 rust = (app / 'src-tauri/src/main.rs').read_text()
-all_rust = '\n'.join((app / 'src-tauri/src' / filename).read_text() for filename in ('main.rs', 'extra.rs', 'wellness.rs', 'calendar_ics.rs', 'system_details.rs', 'media_sessions.rs', 'display.rs', 'notifications.rs'))
+all_rust = '\n'.join((app / 'src-tauri/src' / filename).read_text() for filename in ('main.rs', 'extra.rs', 'wellness.rs', 'calendar_ics.rs', 'system_details.rs', 'media_sessions.rs', 'display.rs', 'notifications.rs', 'os_notifications.rs'))
 config = json.loads((app / 'src-tauri/tauri.conf.json').read_text())
 capabilities = json.loads((app / 'src-tauri/capabilities/default.json').read_text())
 
@@ -59,3 +59,13 @@ for selector in ('.footnote', '.todo-item.done .title', '.note-card small', '.no
 assert 'get_device_diagnostics' in commands and 'system_details::get_device_diagnostics' in rust
 assert 'type="file" multiple' in html
 print('PASS: Phase 44 contrast tokens, local Shelf control and device command wiring')
+
+manifest = ET.parse(root / 'packaging/AppxManifest.xml').getroot()
+ns = {'f':'http://schemas.microsoft.com/appx/manifest/foundation/windows10','uap3':'http://schemas.microsoft.com/appx/manifest/uap/windows10/3','rescap':'http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities'}
+assert manifest.find('f:Identity',ns).get('Name') == 'WFSProject.WFSNotch'
+assert manifest.find('f:Applications/f:Application',ns).get('Executable') == 'wfs-notch.exe'
+assert manifest.find('f:Capabilities/uap3:Capability',ns).get('Name') == 'userNotificationListener'
+assert manifest.find('f:Capabilities/rescap:Capability',ns).get('Name') == 'runFullTrust'
+for command in ('get_os_notification_access','request_os_notification_access','read_os_notification_snapshot','stop_os_notification_session','get_output_role_matrix'):
+    assert command in commands and ('::'+command) in rust
+print('PASS: optional package capability schema and native listener/role command wiring (not installed)')

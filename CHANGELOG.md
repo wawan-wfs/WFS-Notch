@@ -1,5 +1,12 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Integrated desktop workspaces candidate
+
+- Optional WinRT OS notification metadata listener with package identity/manifest verification, UI-thread permission request, explicit session consent, read-on-demand, bounded in-memory observed history and stop/clear guards. Normal NSIS/portable remains fail-closed; optional MSIX build/sign recipe requires a trusted certificate and real Windows acceptance.
+- Read-only Windows output role matrix with snapshot-local endpoint grouping and documented Sound control panel route; no undocumented default-device setter.
+- Media playback readback observation, bounded Shelf multi-file text bundle with explicit clipboard consent, aggregate protected-restore impact and module-specific layout refinements across all 16 workspaces.
+- Existing gates retained; new native/package/runtime acceptance pending. No deployment or version bump.
+
 ## Integrated continuation (candidate)
 
 - Apply exact rustfmt assertion corrections from CI 45844366545; no gate reductions.

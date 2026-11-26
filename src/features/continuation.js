@@ -61,7 +61,7 @@ let wfs53PreviewLease=null,wfs53Review=null,wfs53ReviewTicket=0,wfs53RestoreBusy
 function wfs53ClearReview(message='Choose Review & protect on a backup.'){
   wfs53ReviewTicket++;wfs53Review=null;wfs53PreviewLease=null;
   const host=$('#wfs53-restore-rows');if(!host)return;
-  host.replaceChildren();$('#wfs53-restore-apply').disabled=true;$('#wfs53-restore-status').textContent=message;
+  host.replaceChildren();if(typeof wfs55RenderImpact==='function')wfs55RenderImpact(null);$('#wfs53-restore-apply').disabled=true;$('#wfs53-restore-status').textContent=message;
 }
 async function wfs53ReviewBackup(id){
   if(wfs53RestoreBusy||appDataLoadStatus!=='ready')return;
@@ -72,7 +72,7 @@ async function wfs53ReviewBackup(id){
     const result=wfs53ValidateReview(await invoke('preview_backup_restore',{id}));
     if(ticket!==wfs53ReviewTicket||activeTab!=='settings'){if(wfs53PreviewLease?.token===result?.token)wfs53PreviewLease=null;return;}
     if(!result)throw Error('Invalid backup review');
-    wfs53Review={id,result};const host=$('#wfs53-restore-rows');
+    wfs53Review={id,result};if(typeof wfs55RenderImpact==='function')wfs55RenderImpact(result);const host=$('#wfs53-restore-rows');
     for(const key of ['tasks','notes','events','habits','links']){
       const d=result[key],row=node('div','wfs53-delta');
       row.append(node('b','',key),node('span','',d.before+' → '+d.after),node('small','',d.added+' added IDs · '+d.removed+' removed IDs · '+d.changed+' retained records changed'));host.append(row);
@@ -131,6 +131,7 @@ function wfs54ReleaseShelfFile(){
   if(activeTab!=='dock')return;
   const key=$('#wfs52-file-select').value;
   if(!key||!wfs52ShelfHandles.has(key))return;
+  if(typeof wfs55ClearBundle==='function')wfs55ClearBundle();
   wfs52ShelfHandles.delete(key);
   if(wfs52PreviewKey===key)wfs52ClearFilePreview();
   wfs52RenderFileChoices();wfs53ShelfNoteState();

@@ -701,7 +701,13 @@ function setExpanded(expanded) {
       $('#expanded').hidden = !expanded;
       $('#collapsed').setAttribute('aria-expanded', String(expanded));
       if (expanded) render();
-      else if(typeof wfs52ClearFilePreview==='function')wfs52ClearFilePreview();
+      else {
+        if(typeof wfs52ClearFilePreview==='function')wfs52ClearFilePreview();
+        if(typeof wfs55StopOs==='function')wfs55StopOs();
+        if(typeof wfs55ClearBundle==='function')wfs55ClearBundle();
+        if(typeof wfs55ClearAudio==='function')wfs55ClearAudio();
+        if(typeof wfs55ClearMedia==='function')wfs55ClearMedia();
+      }
     } catch (error) { showError(error); }
   });
   windowQueue = task;
@@ -724,7 +730,11 @@ async function switchTab(tab) {
   if (activeTab === 'notes' && !(await flushNote())) return false;
   if (request !== tabRequest) return false;
   activeTab = tab;
-  $$('.tab').forEach(button => {
+  if(tab!=='settings'&&typeof wfs55StopOs==='function')wfs55StopOs();
+  if(tab!=='dock'&&typeof wfs55ClearBundle==='function')wfs55ClearBundle();
+  if(tab!=='system'&&typeof wfs55ClearAudio==='function')wfs55ClearAudio();
+  if(tab!=='media'&&typeof wfs55ClearMedia==='function')wfs55ClearMedia();
+  $('.tab').forEach(button => {
     const selected = button.dataset.tab === tab;
     button.classList.toggle('active', selected);
   });
@@ -1771,6 +1781,7 @@ function bind() {
   });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && pendingDraft) void flushNote();
+    if(document.hidden&&typeof wfs55StopOs==='function')wfs55StopOs();
   });
 }
 

@@ -458,6 +458,70 @@ pub async fn set_default_output_volume(
     }
 }
 
+#[derive(Serialize)]
+pub struct OutputRoleReading {
+    role: OutputRole,
+    group: Option<usize>,
+    percent: Option<u8>,
+    muted: Option<bool>,
+}
+
+#[tauri::command]
+pub async fn get_output_role_matrix() -> Result<Vec<OutputRoleReading>, String> {
+    #[cfg(windows)]
+    {
+        tauri::async_runtime::spawn_blocking(move || {
+            let _lease = VOLUME_LEASE
+                .try_lock()
+                .map_err(|_| "Audio worker busy or unavailable")?;
+            let mut ids = Vec::<String>::new();
+            let mut rows = Vec::new();
+            for role in [
+                OutputRole::Multimedia,
+                OutputRole::Console,
+                OutputRole::Communications,
+            ] {
+                let reading = with_output_volume(role, |endpoint, volume| {
+                    let scalar = unsafe { volume.GetMasterVolumeLevelScalar() }
+                        .map_err(|_| "Cannot read Windows output volume")?;
+                    if !scalar.is_finite() || !(0.0..=1.0).contains(&scalar) {
+                        return Err("Invalid Windows output volume".into());
+                    }
+                    let muted = unsafe { volume.GetMute() }
+                        .map_err(|_| "Cannot read Windows mute state")?
+                        .as_bool();
+                    let group = match ids.iter().position(|id| id == &endpoint) {
+                        Some(index) => index + 1,
+                        None => {
+                            ids.push(endpoint);
+                            ids.len()
+                        }
+                    };
+                    Ok(OutputRoleReading {
+                        role,
+                        group: Some(group),
+                        percent: Some((scalar * 100.0).round() as u8),
+                        muted: Some(muted),
+                    })
+                });
+                rows.push(reading.unwrap_or(OutputRoleReading {
+                    role,
+                    group: None,
+                    percent: None,
+                    muted: None,
+                }));
+            }
+            Ok(rows)
+        })
+        .await
+        .map_err(|_| "Audio role matrix worker failed".to_owned())?
+    }
+    #[cfg(not(windows))]
+    {
+        Err("Audio roles require Windows".into())
+    }
+}
+
 #[cfg(test)]
 mod output_volume_tests {
     use super::*;

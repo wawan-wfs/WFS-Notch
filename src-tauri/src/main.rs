@@ -17,6 +17,7 @@ mod extra;
 mod ics_time;
 mod media_sessions;
 mod notifications;
+mod os_notifications;
 mod system_details;
 mod wellness;
 use tauri::{menu::MenuBuilder, tray::TrayIconBuilder};
@@ -2790,6 +2791,7 @@ fn main() {
             system_details::get_audio_inventory,
             system_details::get_default_output_volume,
             system_details::get_output_volume_for_role,
+            system_details::get_output_role_matrix,
             system_details::set_default_output_volume,
             media_sessions::get_active_media_session,
             media_sessions::get_media_session_by_source,
@@ -2805,6 +2807,10 @@ fn main() {
             notifications::set_notification_activity_limit,
             notifications::clear_notification_activity,
             notifications::get_windows_notification_permission,
+            os_notifications::get_os_notification_access,
+            os_notifications::request_os_notification_access,
+            os_notifications::read_os_notification_snapshot,
+            os_notifications::stop_os_notification_session,
             notifications::notify_due_event,
             set_accent,
             set_appearance,

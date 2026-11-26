@@ -26,6 +26,7 @@ function renderMediaDetails(snapshot) {
   const card = document.querySelector('#now-playing');
   mediaLastSample = snapshot;
   mediaLastSampleAt = Date.now();
+  if(typeof wfs55ObserveMedia==='function')wfs55ObserveMedia(snapshot);
   if (!snapshot) {
     track.textContent = 'No active media session';
     artist.textContent = nativeInvoke ? 'Start music in a supported Windows player.' : 'Track metadata requires the installed Windows desktop application.';
@@ -60,6 +61,7 @@ function readMediaWithDeadline(command,args={}) {
 }
 async function refreshMediaDetails(force = false) {
   if (!nativeInvoke) return;
+  if(mediaControlPending&&!force)return;
   if (mediaDetailsPending) { if (force) mediaRefreshRequested = true; return; }
   const panel = document.querySelector('#panel-media');
   if (!panel?.classList.contains('active')) return;
@@ -192,6 +194,7 @@ async function controlSelectedPlayer(action) {
   for (const button of document.querySelectorAll('[data-selected-media]')) button.disabled = true;
   try {
     const accepted = await invoke('control_media_session', {source, action});
+    if(typeof wfs55StartMediaObservation==='function')wfs55StartMediaObservation(source,action,accepted===true);
     if (picker.value === source) status.textContent = accepted
       ? 'Command accepted by the selected media player. Refreshing playback state; acceptance is not proof of playback.'
       : 'The selected player did not accept that command.';
@@ -222,6 +225,7 @@ function initMediaSessions() {
   document.querySelector('#media-player-picker').addEventListener('change', () => {
     const picker = document.querySelector('#media-player-picker');
     mediaNeedsSelection = !picker.value;
+    if(typeof wfs55ClearMedia==='function')wfs55ClearMedia();
     for (const button of document.querySelectorAll('[data-selected-media]')) button.disabled = true;
     renderMediaDetails(null);
     void refreshMediaDetails(true);
