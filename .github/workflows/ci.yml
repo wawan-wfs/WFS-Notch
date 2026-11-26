@@ -58,6 +58,8 @@ jobs:
         run: node tests/integrated_queue.test.cjs
       - name: Integrated native volume and file guard regression
         run: node tests/integrated_native_guards.test.cjs
+      - name: Consolidated recovery and workspace model regression
+        run: node tests/continuation_model.test.cjs
       - name: Integrated full browser regression
         run: python tests/browser_integrated.py
       - name: Phase 51 JavaScript syntax

@@ -219,6 +219,22 @@ function previewInvoke(command, args = {}) {
     localStorage.setItem(previewBackupsKey, JSON.stringify(backups));
     return Promise.resolve(info);
   }
+  if (command === 'preview_backup_restore') {
+    const backups=JSON.parse(localStorage.getItem(previewBackupsKey)||'[]'),backup=backups.find(x=>x.info.id===args.id);
+    if(!backup)throw new Error('Backup not found');
+    const token=String(Date.now())+'-'+String(Math.random());
+    const after=JSON.parse(JSON.stringify(backup.snapshot));
+    preservePreviewCancellationHistory(after,state);
+    wfs53PreviewLease={id:args.id,token,before:JSON.stringify(state),snapshot:JSON.stringify(backup.snapshot)};
+    return Promise.resolve({token,...wfs53RestoreReview(state,after)});
+  }
+  if (command === 'restore_backup_reviewed') {
+    const lease=wfs53PreviewLease;wfs53PreviewLease=null;
+    const backup=JSON.parse(localStorage.getItem(previewBackupsKey)||'[]').find(x=>x.info.id===args.id);
+    if(!lease||!backup||lease.id!==args.id||lease.token!==args.token||lease.before!==JSON.stringify(state)||lease.snapshot!==JSON.stringify(backup.snapshot))
+      throw new Error('Backup or local state changed; review again');
+    return previewInvoke('create_backup').then(safety_backup=>previewInvoke('restore_backup',{id:args.id}).then(data=>({data,safety_backup})));
+  }
   if (command === 'restore_backup') {
     const backups = JSON.parse(localStorage.getItem(previewBackupsKey) || '[]');
     const backup = backups.find(item => item.info.id === args.id);
@@ -712,6 +728,7 @@ async function switchTab(tab) {
   if (typeof phase47SyncNav === 'function') phase47SyncNav();
   if (tab !== 'home' && typeof wfs50ClearSearch === 'function' && !wfs50SearchNavigating) wfs50ClearSearch();
   if (tab !== 'dock' && typeof wfs52ClearFilePreview === 'function') wfs52ClearFilePreview();
+  if (tab !== 'settings' && typeof wfs53ClearReview === 'function' && !wfs53RestoreBusy) wfs53ClearReview();
   if (tab === 'settings') void refreshBackups();
   if (tab === 'system') void refreshTelemetry();
   return true;
@@ -1133,6 +1150,9 @@ function renderBackups() {
       } catch (error) { showError(error); }
     });
     line.append(label, restore);
+    if(typeof wfs53ReviewBackup==='function'){
+      const review=node('button','secondary','Review & protect');review.type='button';review.setAttribute('aria-label','Review backup '+backup.id);review.addEventListener('click',()=>void wfs53ReviewBackup(backup.id));line.append(review);
+    }
     list.append(line);
   }
 }
@@ -1286,6 +1306,7 @@ function render() {
   if (typeof wfs52RenderEditors === 'function') wfs52RenderEditors();
   if (typeof wfs52RenderAgendaExport === 'function') wfs52RenderAgendaExport();
   if (typeof wfs52RenderDataSummary === 'function') wfs52RenderDataSummary();
+  if (typeof wfs53RenderModuleContext === 'function') wfs53RenderModuleContext();
 }
 
 async function saveRevisionNote(draft) {

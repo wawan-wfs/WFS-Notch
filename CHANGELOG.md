@@ -1,5 +1,11 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Integrated continuation — connected recovery and workspace surfaces
+
+- Native and preview protected restore review, ID addition/removal counts, stale review rejection and separate safety snapshot. Explicit selected text-to-note creation, daily UTC activity breakdown with consent and filter scoping.
+- Contextual state summaries and original module-specific work surfaces across all 16 modules, retaining legacy routes and controls.
+- 17 new model assertions passed; expanded full-browser acceptance wired. Full native and visual acceptance pending.
+
 ## Integrated continuation — recovery and native controls
 
 - Correct all three cmp_owned diagnostics and four rustfmt differences from run 45762624955 without suppressing lints.

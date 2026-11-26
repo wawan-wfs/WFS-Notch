@@ -180,6 +180,7 @@ async function wfs52ApplySeek(){
   finally{mediaControlPending=false;await refreshMediaDetails(true);wfs52RenderSeek();}
 }
 function wfs52RenderActivityExport(rows){
+  if(typeof wfs53RenderActivityDays==='function')wfs53RenderActivityDays(rows);
   const button=$('#wfs52-activity-export');if(!button)return;
   button.disabled=!rows.length||!activitySnapshotAvailable;
   button.onclick=null;
@@ -312,6 +313,7 @@ async function wfs52ApplyVolume(muteAction){
 function wfs52ClearFilePreview(){
   wfs52FileTicket++;wfs52PreviewKey='';const box=$('#wfs52-file-content');
   if(box)box.replaceChildren();
+  if(typeof wfs53ShelfNoteState==='function')wfs53ShelfNoteState();
   const status=$('#wfs52-file-status');if(status)status.textContent='No content preview. Only explicitly selected session files can be read.';
 }
 function wfs52PruneHandles(records){
@@ -348,6 +350,7 @@ async function wfs52OpenFile(){
       const value=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
       if(value.includes('\0'))throw Error('Binary content is not a text preview');
       box.append(node('pre','wfs52-file-text',value.slice(0,100000)));
+      if(typeof wfs53ShelfNoteState==='function')wfs53ShelfNoteState();
       $('#wfs52-file-status').textContent=value.length>100000?'Text preview truncated to 100,000 characters.':'UTF-8 text shown literally; nothing was executed.';
     }else{
       const bounds=wfs52PngBounds(bytes);if(!bounds)throw Error('Unsupported or oversized PNG dimensions');

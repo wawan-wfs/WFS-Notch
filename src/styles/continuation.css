@@ -1,0 +1,22 @@
+/* Distinct workspaces, original WFS typography and accessible tokens. */
+.wfs53-context{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 11px;margin:0 0 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);min-width:0}
+.wfs53-context-label{display:grid;gap:3px;min-width:0;overflow-wrap:anywhere}.wfs53-context-label small{font-size:9px;letter-spacing:1.1px;color:var(--accent);font-weight:700}.wfs53-context-label b{font-size:12px}.wfs53-context-value{font-size:10px;color:var(--muted)}.wfs53-context-action{flex-shrink:0}
+.wfs53-delta{display:grid;grid-template-columns:minmax(65px,1fr) minmax(50px,1fr);gap:3px 8px;padding:8px 0;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}.wfs53-delta small{grid-column:1/-1;color:var(--muted)}.wfs53-delta b{overflow-wrap:anywhere}
+#panel-home .wfs53-context{border-left:3px solid var(--accent)}#panel-home .home-grid{gap:8px}#panel-home .mini-card{min-width:0}
+#panel-todos .wfs53-context{border-left:3px solid var(--accent)}#panel-todos .todo-entry{padding:10px;border:1px solid var(--line);border-radius:10px}
+#panel-notes .wfs53-context{background:linear-gradient(120deg,var(--accent-fade),var(--panel))}#panel-notes .note-search-row{gap:6px}#panel-notes .note-editor{min-width:0}
+#panel-calendar .event-form{padding:9px;border:1px solid var(--line);border-radius:10px}#panel-calendar .wfs53-context{border-style:solid}
+#panel-system .system-grid{gap:8px}#panel-system .system-card{min-width:0}#panel-system .wfs53-context{border-left:3px solid var(--accent)}
+#panel-timer .timer-controls{min-width:0}#panel-timer .wfs53-context{background:linear-gradient(120deg,var(--accent-fade),var(--panel))}
+#panel-health .health-grid{gap:8px}#panel-health .system-card{min-width:0}#panel-health .phase51-goal{border-bottom:1px solid var(--line)}
+#panel-day .day-summary{padding:8px;border:1px solid var(--line);border-radius:9px;gap:6px;flex-wrap:wrap}
+#panel-countdown .countdown-face{padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+#panel-weather .weather-current{padding:10px;border:1px solid var(--line);border-radius:10px}
+#panel-flashcards .flashcard-face{border:1px solid var(--line);border-radius:12px;overflow-wrap:anywhere}#panel-flashcards .wfs53-context{background:linear-gradient(120deg,var(--accent-fade),var(--panel))}
+#panel-habits .module-list{border-radius:9px;overflow-wrap:anywhere}#panel-habits .phase50-habit-table tbody tr:nth-child(even){background:var(--accent-fade)}
+#panel-dock .launch-grid{gap:7px}#panel-dock .wfs52-file-content{margin:6px 0}#panel-dock .wfs53-context{border-left:3px solid var(--accent)}
+#panel-media .now-playing{border:1px solid var(--line);border-radius:12px}#panel-media .wfs53-context{background:linear-gradient(120deg,var(--accent-fade),var(--panel))}
+#panel-tools .tool-card{min-width:0;border-radius:11px}#panel-tools .wfs53-context{border-left:3px solid var(--accent)}
+#panel-settings .backup-entry{display:flex;flex-wrap:wrap;gap:6px}#panel-settings .backup-entry>div{flex:1;min-width:100px;overflow-wrap:anywhere}#panel-settings .wfs53-recovery{border-left:3px solid var(--accent)}
+@media(max-width:560px){.wfs53-context{align-items:flex-start;padding:7px;gap:5px}.wfs53-context-action{max-width:40%;white-space:normal}.wfs53-context-label b{font-size:11px}.wfs53-context-label small{font-size:8px}}
+@media(forced-colors:active){.wfs53-context,.wfs53-delta{border-color:ButtonText}}
