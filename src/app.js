@@ -535,7 +535,7 @@ function previewInvoke(command, args = {}) {
       state.settings.health_targets=targets;break;
     }
     case 'health_action': {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(args.day)) throw new Error('Invalid health date');
+      if (typeof wfs52CivilDate==='function'?!wfs52CivilDate(args.day):!/^\d{4}-\d{2}-\d{2}$/.test(args.day)) throw new Error('Invalid health date');
       if (state.health.day !== args.day) state.health = { ...defaults().health, day: args.day };
       const actions = {
         water_plus: ['water_glasses', 1, 40],
@@ -1282,6 +1282,8 @@ function render() {
   if (typeof wfs50RenderGaps === 'function') wfs50RenderGaps();
   if (typeof wfs52RenderTasks === 'function') wfs52RenderTasks();
   if (typeof wfs52RenderEditors === 'function') wfs52RenderEditors();
+  if (typeof wfs52RenderAgendaExport === 'function') wfs52RenderAgendaExport();
+  if (typeof wfs52RenderDataSummary === 'function') wfs52RenderDataSummary();
 }
 
 async function saveRevisionNote(draft) {

@@ -1,5 +1,10 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Integrated batch — connected workflows and final gate
+
+- Copy selected-day agenda with explicit consent and bounded output; filtered flashcard review queue; forget saved weather city; local backup/state summary. Improve module-specific layout surfaces across all 16 modules without removing existing controls.
+- Add strict civil-date, agenda and review queue regressions (12 model assertions) and full browser integration test. Publish only the integrated final candidate to automatic CI.
+
 ## Integrated batch — persistence and editing
 
 - Persist personal health targets in native Settings and browser preview; legacy migration, strict civil dates and corrections for break/calm counts.

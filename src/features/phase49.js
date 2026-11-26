@@ -131,6 +131,7 @@ function plannerSelect(key,focus=false) {
   if(!plannerDate(key))return false;
   plannerSelected=key;plannerPage=0;plannerSignature='';plannerRender();
   if(typeof wfs50RenderGaps==='function')wfs50RenderGaps();
+  if(typeof wfs52RenderAgendaExport==='function')wfs52RenderAgendaExport();
   if(focus)$('#phase49-week').querySelector('[data-planner-day="'+key+'"]')?.focus({preventScroll:true});
   return true;
 }

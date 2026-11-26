@@ -1,0 +1,88 @@
+"""Full browser-preview app with real local persistence and explicit fixture-only native state."""
+from pathlib import Path
+import base64
+import re
+from shutil import which
+from playwright.sync_api import sync_playwright, expect
+
+ROOT = Path(__file__).resolve().parents[1]
+UI = ROOT / 'src'
+html = (UI / 'index.html').read_text(encoding='utf-8')
+styles = re.findall(r'<link rel="stylesheet" href="([^"]+)">', html)
+scripts = re.findall(r'<script src="([^"]+)" defer></script>', html)
+html = re.sub(r'<script src="[^"]+" defer></script>', '', html)
+html = re.sub(r'<link rel="stylesheet" href="[^"]+">', '', html)
+logo = base64.b64encode((UI / 'assets/wfs-notch-mark.svg').read_bytes()).decode()
+html = html.replace('src="assets/wfs-notch-mark.svg"', 'src="data:image/svg+xml;base64,' + logo + '"')
+with sync_playwright() as pw:
+    exe = which('chromium') or which('chromium-browser') or which('google-chrome')
+    browser = pw.chromium.launch(**({'executable_path': exe} if exe else {}), headless=True, args=['--no-sandbox', '--disable-dev-shm-usage'])
+    checks = 0
+    def check(c, label):
+        global checks
+        assert c, label
+        checks += 1
+    for width, height, dpr in [(760,470,1),(560,420,1.5)]:
+        page = browser.new_page(viewport={'width':width,'height':height}, device_scale_factor=dpr, bypass_csp=True, reduced_motion='reduce')
+        errors = []
+        page.on('pageerror', lambda e: errors.append(str(e)))
+        page.on('dialog', lambda d: d.accept())
+        page.set_content(html)
+        page.evaluate("""() => {const cache={};Object.defineProperty(window,'localStorage',{configurable:true,value:{getItem:k=>cache[k]??null,setItem:(k,v)=>{cache[k]=String(v);},removeItem:k=>{delete cache[k];}}});}""")
+        for name in styles:
+            page.add_style_tag(content=(UI/name).read_text(encoding='utf-8'))
+        page.add_style_tag(content='body.preview{padding-top:0!important}body.preview .notch{width:min(760px,100vw)!important;height:min(470px,100vh)!important}')
+        for name in scripts:
+            page.add_script_tag(content=(UI/name).read_text(encoding='utf-8'))
+        page.locator('#expanded').wait_for(state='visible')
+        page.wait_for_function("() => appDataLoadStatus==='ready'")
+        page.evaluate("""async()=>{await mutation('add_todo',{title:'Integrated task',priority:'normal'});await mutation('add_habit',{title:'Read'});await mutation('add_quick_link',{label:'Old site',url:'https://example.com'});await switchTab('todos');}""")
+        page.locator('#wfs52-task-form').evaluate("(e)=>e.closest('details').open=true")
+        page.locator('#wfs52-task-list input').first.check()
+        page.locator('#wfs52-task-priority').select_option('high')
+        page.locator('#wfs52-task-apply').click()
+        page.wait_for_function("()=>data.todos.some(t=>t.title==='Integrated task'&&t.priority==='high')")
+        check(page.evaluate("()=>data.todos.find(t=>t.title==='Integrated task').change_token!=null"),'token updated')
+        check(page.evaluate("()=>data.todos.find(t=>t.title==='Integrated task').due_at_ms==null"),'deadline preserved')
+        page.evaluate("()=>switchTab('dock')")
+        page.locator('#wfs52-shelf-json').evaluate("(e)=>e.closest('details').open=true")
+        page.locator('#wfs52-shelf-json').fill('{"format":"wfs-notch-shelf-metadata","version":1,"entries":[{"name":"sample.pdf","size":123,"modified":1}]}')
+        page.locator('#wfs52-shelf-preview').click()
+        expect(page.locator('#wfs52-shelf-status')).to_contain_text('1 new')
+        page.locator('#wfs52-shelf-apply').click()
+        expect(page.locator('#shelf-list')).to_contain_text('sample.pdf')
+        check(page.evaluate("()=>shelfEntries.length===1"),'one metadata entry')
+        page.locator('#wfs52-link-form').evaluate("(e)=>e.closest('details').open=true")
+        page.locator('#wfs52-link-select').select_option(label='Old site')
+        page.locator('#wfs52-link-load').click()
+        page.locator('#wfs52-link-title').fill('New site')
+        page.locator('#wfs52-link-apply').click()
+        page.wait_for_function("()=>data.quick_links.some(x=>x.label==='New site')")
+        check(page.evaluate("()=>data.quick_links[0].url==='https://example.com/'"),'URL preserved')
+        page.evaluate("()=>switchTab('habits')")
+        page.locator('#wfs52-habit-form').evaluate("(e)=>e.closest('details').open=true")
+        page.locator('#wfs52-habit-select').select_option(label='Read')
+        page.locator('#wfs52-habit-load').click()
+        page.locator('#wfs52-habit-title').fill('Read daily')
+        page.locator('#wfs52-habit-apply').click()
+        page.wait_for_function("()=>data.habits.some(x=>x.title==='Read daily')")
+        check(page.evaluate("()=>data.habits.length===1"),'rename retains identity')
+        page.evaluate("()=>switchTab('health')")
+        page.locator('#phase51-health-form').evaluate("(e)=>e.closest('details').open=true")
+        page.locator('#phase51-water').fill('10')
+        page.locator('#phase51-health-form button[type=submit]').click()
+        page.wait_for_function("()=>data.settings.health_targets.water===10")
+        check(page.evaluate("()=>JSON.parse(localStorage.getItem('wfs-notch-browser-preview-v2')).settings.health_targets.water===10"),'health target persisted')
+        page.evaluate("()=>switchTab('weather')")
+        page.evaluate("()=>{localStorage.setItem('wfs-notch-weather-city','Fixture');document.querySelector('#weather-city').value='Fixture';}")
+        page.locator('#wfs52-weather-forget').click()
+        check(page.evaluate("()=>localStorage.getItem('wfs-notch-weather-city')===null"),'city forgotten')
+        page.evaluate("()=>switchTab('media')")
+        expect(page.locator('#wfs52-seek-apply')).to_be_disabled()
+        check(page.evaluate("()=>!nativeInvoke"),'no native simulation')
+        check(not errors,'no JavaScript errors '+str(errors))
+        out=ROOT/'test-results';out.mkdir(exist_ok=True)
+        page.screenshot(path=str(out/f'browser-integrated-{width}-{dpr}.png'))
+        page.close()
+    browser.close()
+    print(f'PASS: {checks} integrated full browser assertions (native seek not simulated)')

@@ -162,6 +162,7 @@ function wfs50RenderReview(cards){
   status.textContent=summary.known+' known · '+summary.again+' review again · '+summary.remaining+' unrated (this session)';
   for(const id of ['phase50-known','phase50-again'])$('#'+id).disabled=!cards.length||!flashcardShowingAnswer;
   $('#phase50-review-reset').disabled=!wfs50Review.ratings.size;
+  if(typeof wfs52RenderReviewQueue==='function')wfs52RenderReviewQueue(cards);
 }
 function wfs50Rate(rating){
   const cards=cardsFromNote(flashcardNoteId);

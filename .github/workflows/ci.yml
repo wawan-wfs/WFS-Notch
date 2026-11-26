@@ -54,6 +54,10 @@ jobs:
         run: node tests/integrated_model.test.cjs
       - name: Integrated editor model regression
         run: node tests/integrated_editors.test.cjs
+      - name: Integrated agenda and review regression
+        run: node tests/integrated_queue.test.cjs
+      - name: Integrated full browser regression
+        run: python tests/browser_integrated.py
       - name: Phase 51 JavaScript syntax
         run: node --check src/features/phase51.js
       - name: Phase 51 timer, counters and wellness model regression

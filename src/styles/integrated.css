@@ -1,2 +1,20 @@
 /* Batch workspaces, explicit preview and commit controls. */
 .wfs52-details>summary{cursor:pointer;font-weight:600;padding:7px 0}.wfs52-toolbar{display:flex;flex-wrap:wrap;gap:7px;align-items:end;margin:8px 0}.wfs52-toolbar label{display:grid;gap:4px;min-width:0;color:var(--muted);font-size:11px}.wfs52-task-list{max-height:180px;overflow:auto}.wfs52-select-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--line);overflow-wrap:anywhere}.wfs52-select-row small{color:var(--muted)}.wfs52-seek{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:7px;font-size:11px}.wfs52-seek input{flex:1;min-width:80px;accent-color:var(--accent)}.wfs52-seek p{flex-basis:100%}#wfs52-shelf-json{width:100%;resize:vertical;min-height:54px;max-height:180px} @media(max-width:560px){.wfs52-toolbar label:first-child{width:100%}.wfs52-seek label{flex-basis:100%}}
+/* Module-specific surface hierarchy, retain all controls and existing accessibility tokens. */
+#panel-home .workspace-card{border-radius:12px;padding:12px}
+#panel-todos .wfs52-task-list{border-top:1px solid var(--line)}
+#panel-notes .note-card{overflow-wrap:anywhere}
+#panel-calendar .event-info{min-width:0;overflow-wrap:anywhere}
+#panel-system .phase51-network-row{background:var(--panel);border-radius:7px;padding:8px}
+#panel-timer .phase51-form{justify-content:flex-start}
+#panel-health .phase51-goal{font-variant-numeric:tabular-nums}
+#panel-day .module-item{overflow-wrap:anywhere}
+#panel-countdown #phase51-countdown-end{font-variant-numeric:tabular-nums}
+#panel-weather .phase51-rain-row{border-bottom:1px solid var(--line)}
+#panel-flashcards .tool-actions label{display:grid;gap:4px;min-width:0}
+#panel-habits .phase50-habit-scroll{border-radius:8px}
+#panel-dock .wfs52-toolbar input{max-width:100%;min-width:0}
+#panel-media .wfs52-seek span{font-variant-numeric:tabular-nums}
+#panel-tools #phase51-lap-stats{overflow-wrap:anywhere}
+#panel-settings #wfs52-data-summary{padding:8px;border:1px solid var(--line);border-radius:8px}
+@media(forced-colors:active){.wfs52-select-row{border-color:ButtonText}}

@@ -239,6 +239,7 @@ async function fetchWeather(city, selectedPlace = null) {
   weatherInFlight = true;
   if(typeof wfs51ClearWeather==='function')wfs51ClearWeather();
   $('#weather-search').disabled = true;
+  if($('#wfs52-weather-forget'))$('#wfs52-weather-forget').disabled=true;
   field.textContent = 'Looking up ' + (selectedPlace?.name || city) + '…';
   $('#weather-forecast').hidden = true;
   $('#weather-hours').replaceChildren();
@@ -288,6 +289,7 @@ async function fetchWeather(city, selectedPlace = null) {
     field.textContent = 'Weather unavailable: ' + (error?.message || String(error));
   } finally {
     $('#weather-search').disabled = false;
+    if($('#wfs52-weather-forget'))$('#wfs52-weather-forget').disabled=false;
     weatherInFlight = false;
   }
 }

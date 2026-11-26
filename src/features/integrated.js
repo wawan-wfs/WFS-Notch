@@ -48,6 +48,33 @@ function wfs52EditSignature(item,type){
   return item?JSON.stringify(type==='habit'?[item.id,item.title]:[item.id,item.label,item.url]):'';
 }
 
+function wfs52CivilDate(day){
+  if(typeof day!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(day))return false;
+  const d=new Date(day+'T00:00:00Z');
+  return Number.isFinite(+d)&&d.toISOString().slice(0,10)===day;
+}
+function wfs52AgendaText(plan,key){
+  if(!wfs52CivilDate(key))throw Error('Invalid agenda date');
+  const safe=value=>String(value).replace(/[\x00-\x1f\x7f\u202a-\u202e\u2066-\u2069]/gu,' ').trim();
+  const lines=['WFS Notch agenda · '+key,'Open tasks: '+plan.tasks+' · Events: '+plan.events,''];
+  const fmt=ms=>new Date(ms).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+  for(const r of plan.rows.slice(0,200)){
+    const time=r.allDay?'All day':r.continued?'Continues':fmt(r.start);
+    lines.push(time+' · '+(r.kind==='task'?'Task':'Event')+' · '+safe(r.title)+(r.overlap?' [overlap]':''));
+  }
+  if(plan.rows.length>200)lines.push('Only first 200 records included.');
+  return lines.join('\n');
+}
+function wfs52ReviewNext(ratings,count,current,mode){
+  if(!Number.isInteger(count)||count<1||count>200||!['again','unrated','all'].includes(mode))return null;
+  const from=Number.isInteger(current)&&current>=0&&current<count?current:-1;
+  for(let n=1;n<=count;n++){
+    const i=(from+n)%count,r=ratings.get(i);
+    if(mode==='all'||mode==='again'&&r==='again'||mode==='unrated'&&!ratings.has(i))return i;
+  }
+  return null;
+}
+
 let wfs52Selection=new Map(),wfs52TaskPending=false,wfs52ShelfReview=null,wfs52SeekKey='',wfs52SeekEdited=false,wfs52SeekFeedback='';
 function wfs52RenderTasks(){
   const host=$('#wfs52-task-list');if(!host)return;
@@ -169,6 +196,43 @@ async function wfs52SaveEditor(type){
   }finally{editor.pending=false;wfs52RenderEditors();}
 }
 
+function wfs52RenderAgendaExport(){
+  const button=$('#wfs52-agenda-copy');if(!button)return;
+  button.disabled=appDataLoadStatus!=='ready'||!wfs52CivilDate(plannerSelected);
+}
+async function wfs52CopyAgenda(){
+  if(appDataLoadStatus!=='ready'||!wfs52CivilDate(plannerSelected))return;
+  const plan=plannerDay(data.todos||[],data.events||[],plannerSelected),key=plannerSelected;
+  if(!confirm('Copy agenda for '+key+'? Includes task and event titles, up to 200 records.'))return;
+  try{await navigator.clipboard.writeText(wfs52AgendaText(plan,key));showInfo('Copied selected-day agenda.');}
+  catch{showError('Clipboard unavailable.');}
+}
+function wfs52RenderReviewQueue(cards){
+  const mode=$('#wfs52-review-mode'),next=$('#wfs52-review-next');if(!mode||!next)return;
+  next.disabled=!wfs50Review||wfs52ReviewNext(wfs50Review.ratings,cards.length,flashcardIndex,mode.value)===null;
+}
+function wfs52AdvanceReview(){
+  const cards=cardsFromNote(flashcardNoteId);
+  wfs50Review=wfs50ReviewState(wfs50Review,flashcardNoteId,cards);
+  const index=wfs52ReviewNext(wfs50Review.ratings,cards.length,flashcardIndex,$('#wfs52-review-mode').value);
+  if(index===null)return;
+  flashcardIndex=index;flashcardShowingAnswer=false;renderFlashcards();
+}
+function wfs52ForgetWeather(){
+  if(weatherInFlight)return;
+  const status=$('#weather-current');
+  try{localStorage.removeItem('wfs-notch-weather-city');}
+  catch{status.textContent='Could not remove stored city. Retry.';return;}
+  $('#weather-city').value='';$('#weather-forecast').hidden=true;$('#weather-locations').hidden=true;
+  for(const id of ['weather-locations','weather-details','weather-hours','weather-days'])$('#'+id).replaceChildren();
+  $('#weather-timezone').textContent='';wfs51ClearWeather();status.textContent='Stored city and current forecast cleared.';
+}
+function wfs52RenderDataSummary(){
+  const host=$('#wfs52-data-summary');if(!host)return;
+  if(appDataLoadStatus!=='ready'){host.textContent='Local state unavailable.';return;}
+  host.textContent=(data.todos||[]).length+' tasks · '+(data.notes||[]).length+' notes · '+(data.events||[]).length+' events · '+(data.habits||[]).length+' habits · '+(data.quick_links||[]).length+' pinned links. Counts only; no content is exported.';
+}
+
 function wfs52Init(){
   const form=$('#wfs52-task-form');if(!form||form.dataset.ready==='true')return;form.dataset.ready='true';
   $('#wfs52-task-search').addEventListener('input',wfs52RenderTasks);
@@ -198,6 +262,10 @@ function wfs52Init(){
     $('#wfs52-'+type+'-load').addEventListener('click',()=>wfs52LoadEditor(type));
     $('#wfs52-'+type+'-form').addEventListener('submit',e=>{e.preventDefault();void wfs52SaveEditor(type);});
   }
-  wfs52RenderTasks();wfs52RenderSeek();wfs52RenderEditors();
+  $('#wfs52-agenda-copy').addEventListener('click',()=>void wfs52CopyAgenda());
+  $('#wfs52-review-mode').addEventListener('change',()=>wfs52RenderReviewQueue(cardsFromNote(flashcardNoteId)));
+  $('#wfs52-review-next').addEventListener('click',wfs52AdvanceReview);
+  $('#wfs52-weather-forget').addEventListener('click',wfs52ForgetWeather);
+  wfs52RenderTasks();wfs52RenderSeek();wfs52RenderEditors();wfs52RenderAgendaExport();wfs52RenderDataSummary();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wfs52Init,{once:true});else wfs52Init();
