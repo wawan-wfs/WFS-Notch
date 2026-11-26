@@ -401,7 +401,7 @@ function wfs52Init(){
   $('#wfs52-review-next').addEventListener('click',wfs52AdvanceReview);
   $('#wfs52-weather-forget').addEventListener('click',wfs52ForgetWeather);
   $('#wfs52-volume-read').addEventListener('click',()=>void wfs52ReadVolume());
-  const role=$('#wfs53-output-role');if(role)role.addEventListener('change',()=>{wfs52VolumeTicket++;wfs52Output=null;$('#wfs52-volume-status').textContent='Role changed. Read the chosen output before applying.';wfs52RenderVolume();});
+  const role=$('#wfs53-output-role');if(role)role.addEventListener('change',()=>{if(wfs52VolumeBusy)return;wfs52VolumeTicket++;wfs52Output=null;$('#wfs52-volume-status').textContent='Role changed. Read the chosen output before applying.';wfs52RenderVolume();});
   $('#wfs52-volume').addEventListener('input',wfs52RenderVolume);
   $('#wfs52-volume-apply').addEventListener('click',()=>void wfs52ApplyVolume(false));
   $('#wfs52-volume-mute').addEventListener('click',()=>void wfs52ApplyVolume(true));

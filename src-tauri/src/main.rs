@@ -895,6 +895,9 @@ impl Store {
 
     fn save(&self) -> Result<(), String> {
         let content = serde_json::to_vec_pretty(&self.data).map_err(|error| error.to_string())?;
+        if content.len() as u64 > MAX_STATE_BYTES {
+            return Err("State exceeds the 32 MB recoverable size limit".into());
+        }
         let temp = self.path.with_extension("json.tmp");
         let backup = self.path.with_extension("json.bak");
         let previous = self.path.with_extension("json.bak.prev");

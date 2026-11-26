@@ -1,5 +1,9 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Consolidated candidate freeze
+
+- 281 focused assertions passed (28 new, 253 prior); 408 unique IDs and 16 routes. Bound state writes to the same 32 MB recovery limit. All prior CI gates preserved. Publish one candidate after source assembly; new Windows/browser acceptance pending. See docs/INTEGRATED_CONTINUATION_REPORT.md.
+
 ## Integrated continuation — output roles and bounded media workers
 
 - Choose the default Windows output role (multimedia, console, communications) for explicit readback, volume and mute. Short-lived leases bind to the actual role and endpoint; changes outside WFS invalidate the lease. No default-device switching, capture access or raw identifiers.
