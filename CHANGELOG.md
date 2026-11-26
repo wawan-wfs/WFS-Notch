@@ -1,5 +1,9 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Phase 50 — CI activation checkpoint
+
+- Enable automatic CI on `dev/phase[0-9]*` candidate branches, retaining manual dispatch, read-only permissions, existing concurrency and all existing gates. No automated deployment or main changes. Explicit owner approval 2026-11-26.
+
 ## Phase 50 — v0.45.0 candidate
 
 - Phase 49 manual CI run 45673734919: all three jobs passed, 122 Rust tests, full browser regression and 80 matrix screenshots; package verified separately.

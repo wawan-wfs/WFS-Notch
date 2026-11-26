@@ -2,8 +2,12 @@ name: WFS Notch — Windows CI & Browser Audit
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - 'dev/phase[0-9]*'
 
-# No repository writes, privileged events, remote shell, or tunnel in CI.
+# Automatic candidate-branch CI approved 2026-11-26. No main push trigger,
+# repository writes, privileged events, remote shell, tunnel, or deployment.
 permissions:
   contents: read
 
