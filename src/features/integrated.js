@@ -308,10 +308,13 @@ async function wfs52ApplyVolume(muteAction){
   if(!muteAction&&args.percent===wfs52Output.percent)return;
   wfs52VolumeBusy=true;wfs52Output=null;wfs52RenderVolume();$('#wfs52-volume-status').textContent='Applying explicit Windows output action…';
   try{
+    const selectedRole=$('#wfs53-output-role')?.value||'multimedia';
     wfs52Output=wfs52VolumeSnapshot(await invoke('set_default_output_volume',args),Date.now());
+    if(wfs52Output?.role!==selectedRole)throw Error('Unexpected output role in Windows readback');
     if(!wfs52Output||wfs52Output.role!==role)throw Error('Invalid readback role');
     $('#wfs52-volume').value=String(wfs52Output.percent);
-    $('#wfs52-volume-status').textContent='Windows readback: '+wfs52Output.percent+'% · '+(wfs52Output.muted?'muted':'unmuted')+'.';
+    const matched=args.percent===null?wfs52Output.muted===args.muted:wfs52Output.percent===args.percent;
+    $('#wfs52-volume-status').textContent='Windows readback: '+wfs52Output.percent+'% · '+(wfs52Output.muted?'muted':'unmuted')+'. '+(matched?'Matches request.':'Differs from request; read before retrying.');
   }catch(e){wfs52Output=null;$('#wfs52-volume-status').textContent='Output changed, expired or unavailable; read Windows again before retrying.';showError(e);}
   finally{wfs52VolumeBusy=false;wfs52RenderVolume();}
 }
@@ -339,6 +342,7 @@ function wfs52RenderFileChoices(){
   select.value=rows.some(r=>wfs52ShelfKey(r)===old)?old:'';
   $('#wfs52-file-open').disabled=!select.value;$('#wfs52-file-forget').disabled=!rows.length;
   if(wfs52PreviewKey&&wfs52PreviewKey!==select.value)wfs52ClearFilePreview();
+  if(typeof wfs53ShelfNoteState==='function')wfs53ShelfNoteState();
 }
 async function wfs52OpenFile(){
   const key=$('#wfs52-file-select').value,file=wfs52ShelfHandles.get(key);

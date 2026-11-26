@@ -1,8 +1,10 @@
 'use strict';
 function wfs53IdDelta(before,after){
-  const ids=items=>new Set((Array.isArray(items)?items:[]).filter(x=>x&&typeof x.id==='string'&&x.id).map(x=>x.id));
+  const ids=items=>new Map((Array.isArray(items)?items:[]).filter(x=>x&&typeof x.id==='string'&&x.id).map(x=>[x.id,x]));
+  const canonical=x=>JSON.stringify(x,(_k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
   const b=ids(before),a=ids(after);
-  return {before:b.size,after:a.size,added:[...a].filter(id=>!b.has(id)).length,removed:[...b].filter(id=>!a.has(id)).length};
+  let changed=0;for(const [id,value] of b){if(a.has(id)&&canonical(value)!==canonical(a.get(id)))changed++;}
+  return {before:b.size,after:a.size,added:[...a.keys()].filter(id=>!b.has(id)).length,removed:[...b.keys()].filter(id=>!a.has(id)).length,changed};
 }
 function wfs53RestoreReview(before,after){
   const out={};for(const [key,field] of [['tasks','todos'],['notes','notes'],['events','events'],['habits','habits'],['links','quick_links']])out[key]=wfs53IdDelta(before[field],after[field]);return out;
@@ -11,16 +13,16 @@ function wfs53ValidateReview(raw){
   if(!raw||typeof raw.token!=='string'||!raw.token||raw.token.length>128)return null;
   const review={token:raw.token};
   for(const key of ['tasks','notes','events','habits','links']){
-    const d=raw[key];if(!d||!['before','after','added','removed'].every(k=>Number.isSafeInteger(d[k])&&d[k]>=0)||
-      d.removed>d.before||d.added>d.after||d.before-d.removed+d.added!==d.after)return null;
-    review[key]={before:d.before,after:d.after,added:d.added,removed:d.removed};
+    const d=raw[key];if(!d||!['before','after','added','removed','changed'].every(k=>Number.isSafeInteger(d[k])&&d[k]>=0)||
+      d.removed>d.before||d.added>d.after||d.before-d.removed+d.added!==d.after||d.changed>d.before-d.removed)return null;
+    review[key]={before:d.before,after:d.after,added:d.added,removed:d.removed,changed:d.changed};
   }
   return review;
 }
 function wfs53ActivityDays(rows){
   const byDay=new Map();
   for(const r of rows){
-    if(!r||!Number.isSafeInteger(r.at_ms)||r.at_ms<0||r.at_ms>8640000000000000||
+    if(!r||!Number.isSafeInteger(r.at_ms)||r.at_ms<0||r.at_ms>253402300799999||
       !['calendar','task'].includes(r.kind)||!['enqueue_accepted','retry_scheduled','retry_exhausted'].includes(r.outcome))continue;
     const key=new Date(r.at_ms).toISOString().slice(0,10);
     if(!byDay.has(key))byDay.set(key,{day:key,accepted:0,retry:0,exhausted:0,tasks:0,calendar:0});
@@ -73,9 +75,9 @@ async function wfs53ReviewBackup(id){
     wfs53Review={id,result};const host=$('#wfs53-restore-rows');
     for(const key of ['tasks','notes','events','habits','links']){
       const d=result[key],row=node('div','wfs53-delta');
-      row.append(node('b','',key),node('span','',d.before+' → '+d.after),node('small','',d.added+' added IDs · '+d.removed+' removed IDs'));host.append(row);
+      row.append(node('b','',key),node('span','',d.before+' → '+d.after),node('small','',d.added+' added IDs · '+d.removed+' removed IDs · '+d.changed+' retained records changed'));host.append(row);
     }
-    $('#wfs53-restore-status').textContent='Review ready. Existing IDs may also contain changed content. A separate safety backup will be saved before applying.';
+    $('#wfs53-restore-status').textContent='Review ready. Counts include changed retained records, without exposing their contents. A separate safety backup will be saved before applying.';
     $('#wfs53-restore-apply').disabled=false;
     $('#wfs53-restore-status').scrollIntoView({block:'nearest'});
   }catch(e){if(ticket===wfs53ReviewTicket)wfs53ClearReview('Review unavailable: '+(e.message||String(e)));}
@@ -111,6 +113,28 @@ function wfs53ShelfNoteState(){
   const b=$('#wfs53-shelf-note');if(!b)return;
   const pre=$('#wfs52-file-content pre'),record=shelfEntries.find(r=>wfs52ShelfKey(r)===wfs52PreviewKey);
   b.disabled=wfs53NoteBusy||!record||!pre||!wfs53NoteDraft(record.name,pre.textContent);
+  const copy=$('#wfs54-shelf-copy'),release=$('#wfs54-shelf-release');
+  if(copy)copy.disabled=!record||!pre||!wfs54CopyableText(pre.textContent);
+  if(release)release.disabled=!$('#wfs52-file-select')?.value||!wfs52ShelfHandles.has($('#wfs52-file-select').value);
+}
+function wfs54CopyableText(value){
+  return typeof value==='string'&&value.length>0&&value.length<=100000&&!value.includes(String.fromCharCode(0));
+}
+async function wfs54CopyShelfText(){
+  if(activeTab!=='dock'||!wfs52ShelfHandles.has(wfs52PreviewKey))return;
+  const pre=$('#wfs52-file-content pre'),value=pre?.textContent;
+  if(!wfs54CopyableText(value)||!confirm('Copy displayed file text to the system clipboard? Other apps may read clipboard contents.'))return;
+  try{await navigator.clipboard.writeText(value);showInfo('Displayed file text copied.');}
+  catch{showError('Clipboard unavailable; no copy confirmed.');}
+}
+function wfs54ReleaseShelfFile(){
+  if(activeTab!=='dock')return;
+  const key=$('#wfs52-file-select').value;
+  if(!key||!wfs52ShelfHandles.has(key))return;
+  wfs52ShelfHandles.delete(key);
+  if(wfs52PreviewKey===key)wfs52ClearFilePreview();
+  wfs52RenderFileChoices();wfs53ShelfNoteState();
+  showInfo('Selected session file released. Remembered metadata and original file are unchanged.');
 }
 async function wfs53CreateShelfNote(){
   if(wfs53NoteBusy||activeTab!=='dock'||appDataLoadStatus!=='ready')return;
@@ -175,6 +199,9 @@ function wfs53Init(){
   apply.addEventListener('click',()=>void wfs53ApplyRestore());
   $('#wfs53-restore-cancel').addEventListener('click',()=>wfs53ClearReview());
   $('#wfs53-shelf-note').addEventListener('click',()=>void wfs53CreateShelfNote());
+  $('#wfs54-shelf-copy').addEventListener('click',()=>void wfs54CopyShelfText());
+  $('#wfs54-shelf-release').addEventListener('click',wfs54ReleaseShelfFile);
+  $('#wfs52-file-select').addEventListener('change',wfs53ShelfNoteState);
   $('#wfs53-deadline').addEventListener('input',wfs53RenderDeadlines);
   $('#wfs53-deadline-set').addEventListener('click',()=>void wfs53ApplyDeadlines(false));
   $('#wfs53-deadline-clear').addEventListener('click',()=>void wfs53ApplyDeadlines(true));

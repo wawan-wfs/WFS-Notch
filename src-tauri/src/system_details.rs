@@ -414,10 +414,15 @@ pub async fn set_default_output_volume(
             let mut lease = VOLUME_LEASE
                 .try_lock()
                 .map_err(|_| "Audio worker busy or unavailable")?;
-            let selected = lease.take().ok_or("Read output volume again")?;
-            if selected.token != token || selected.issued.elapsed().as_secs() >= 30 {
+            let selected = lease.as_ref().ok_or("Read output volume again")?;
+            if selected.token != token {
+                return Err("Audio snapshot superseded; read again".into());
+            }
+            if selected.issued.elapsed().as_secs() >= 30 {
+                *lease = None;
                 return Err("Audio snapshot expired; read again".into());
             }
+            let selected = lease.take().ok_or("Read output volume again")?;
             with_output_volume(selected.role, |endpoint, volume| {
                 if endpoint != selected.endpoint {
                     return Err("Default output changed; read the new endpoint first".into());

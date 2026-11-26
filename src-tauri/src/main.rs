@@ -2348,6 +2348,7 @@ struct RestoreDelta {
     after: usize,
     added: usize,
     removed: usize,
+    changed: usize,
 }
 
 fn restore_delta<'a>(
@@ -2361,7 +2362,27 @@ fn restore_delta<'a>(
         after: after.len(),
         added: after.difference(&before).count(),
         removed: before.difference(&after).count(),
+        changed: 0,
     }
+}
+
+fn restore_record_delta<'a, T: Serialize + 'a>(
+    before: impl Iterator<Item = (&'a str, &'a T)>,
+    after: impl Iterator<Item = (&'a str, &'a T)>,
+) -> Result<RestoreDelta, String> {
+    let before: std::collections::HashMap<_, _> = before.collect();
+    let after: std::collections::HashMap<_, _> = after.collect();
+    let mut delta = restore_delta(before.keys().copied(), after.keys().copied());
+    for (id, old) in &before {
+        if let Some(new) = after.get(id) {
+            let old = serde_json::to_value(old).map_err(|e| e.to_string())?;
+            let new = serde_json::to_value(new).map_err(|e| e.to_string())?;
+            if old != new {
+                delta.changed += 1;
+            }
+        }
+    }
+    Ok(delta)
 }
 
 #[derive(Serialize)]
@@ -2411,26 +2432,26 @@ fn preview_backup_restore(
     let before = &locked.data;
     Ok(RestoreReview {
         token,
-        tasks: restore_delta(
-            before.todos.iter().map(|x| x.id.as_str()),
-            after.todos.iter().map(|x| x.id.as_str()),
-        ),
-        notes: restore_delta(
-            before.notes.iter().map(|x| x.id.as_str()),
-            after.notes.iter().map(|x| x.id.as_str()),
-        ),
-        events: restore_delta(
-            before.events.iter().map(|x| x.id.as_str()),
-            after.events.iter().map(|x| x.id.as_str()),
-        ),
-        habits: restore_delta(
-            before.habits.iter().map(|x| x.id.as_str()),
-            after.habits.iter().map(|x| x.id.as_str()),
-        ),
-        links: restore_delta(
-            before.quick_links.iter().map(|x| x.id.as_str()),
-            after.quick_links.iter().map(|x| x.id.as_str()),
-        ),
+        tasks: restore_record_delta(
+            before.todos.iter().map(|x| (x.id.as_str(), x)),
+            after.todos.iter().map(|x| (x.id.as_str(), x)),
+        )?,
+        notes: restore_record_delta(
+            before.notes.iter().map(|x| (x.id.as_str(), x)),
+            after.notes.iter().map(|x| (x.id.as_str(), x)),
+        )?,
+        events: restore_record_delta(
+            before.events.iter().map(|x| (x.id.as_str(), x)),
+            after.events.iter().map(|x| (x.id.as_str(), x)),
+        )?,
+        habits: restore_record_delta(
+            before.habits.iter().map(|x| (x.id.as_str(), x)),
+            after.habits.iter().map(|x| (x.id.as_str(), x)),
+        )?,
+        links: restore_record_delta(
+            before.quick_links.iter().map(|x| (x.id.as_str(), x)),
+            after.quick_links.iter().map(|x| (x.id.as_str(), x)),
+        )?,
     })
 }
 
@@ -2893,10 +2914,19 @@ mod tests {
     fn restore_review_detects_state_and_backup_changes() {
         let mut state = AppData::default();
         let token = restore_fingerprint("backup", b"old", &state).unwrap();
-        assert_eq!(token, restore_fingerprint("backup", b"old", &state).unwrap());
-        assert_ne!(token, restore_fingerprint("backup", b"new", &state).unwrap());
+        assert_eq!(
+            token,
+            restore_fingerprint("backup", b"old", &state).unwrap()
+        );
+        assert_ne!(
+            token,
+            restore_fingerprint("backup", b"new", &state).unwrap()
+        );
         state.settings.pin_open = true;
-        assert_ne!(token, restore_fingerprint("backup", b"old", &state).unwrap());
+        assert_ne!(
+            token,
+            restore_fingerprint("backup", b"old", &state).unwrap()
+        );
         let delta = restore_delta(["a", "b"].into_iter(), ["b", "c"].into_iter());
         assert_eq!(
             delta,
@@ -2905,8 +2935,19 @@ mod tests {
                 after: 2,
                 added: 1,
                 removed: 1,
+                changed: 0,
             }
         );
+        let before = [("a", 1), ("b", 2), ("same", 5)];
+        let after = [("a", 3), ("c", 4), ("same", 5)];
+        let delta = restore_record_delta(
+            before.iter().map(|(id, value)| (*id, value)),
+            after.iter().map(|(id, value)| (*id, value)),
+        )
+        .unwrap();
+        assert_eq!(delta.changed, 1);
+        assert_eq!(delta.added, 1);
+        assert_eq!(delta.removed, 1);
     }
 
     #[test]

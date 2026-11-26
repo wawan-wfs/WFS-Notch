@@ -193,7 +193,7 @@ async function controlSelectedPlayer(action) {
   try {
     const accepted = await invoke('control_media_session', {source, action});
     if (picker.value === source) status.textContent = accepted
-      ? 'Command accepted by the selected media player.'
+      ? 'Command accepted by the selected media player. Refreshing playback state; acceptance is not proof of playback.'
       : 'The selected player did not accept that command.';
     await refreshMediaDetails(true);
   } catch (error) {

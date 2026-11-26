@@ -1,0 +1,7 @@
+# Integrated development evidence ledger
+
+Baseline 52fcbc251346deba50b71fcc02572fee97b46272; Actions 45844366545. Exact Rust job log reports 131 tests passed, Clippy passed, format failed on three assertions at main.rs:2893. Browser/static job passed. Installer, portable, checksums and browser evidence uploaded, no complete native acceptance. The installer from this run is unsigned and belongs to baseline only.
+
+Integrated source changes: format correction; native/preview metadata-only retained record change counts and bounds; native volume lease supersession guard and UI readback comparison; explicit Shelf per-file release and consented bounded clipboard copy; invalid extended UTC activity years excluded; media command status distinguishes acceptance from playback; 16 module-specific CSS refinements, not complete redesign. No workflow gate or branding changes. No new version bump.
+
+Actual V8 execution of exact continuation model test source with in-memory file and assert adapters: PASS: 25 consolidated recovery, activity and Shelf assertions; PASS: 31 total consolidated assertions. Syntax parsed for continuation.js, integrated.js, media.js. Not Node/Chromium or Rust/Windows acceptance. New native code requires actual compile, Clippy and rustfmt. Remaining: direct OS supported device switching, package/capability/consent validated Windows notification listener, native runtime scenarios, full independent module redesign, Shelf workflows and same-host 38-category parity comparison. Historical 28.9% retained. No auto-deployment.

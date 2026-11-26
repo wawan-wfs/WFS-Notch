@@ -1,5 +1,14 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Integrated continuation (candidate)
+
+- Apply exact rustfmt assertion corrections from CI 45844366545; no gate reductions.
+- Add privacy-preserving changed-retained-record counts to native and browser protected restore reviews.
+- Preserve newer output-volume lease against a superseded token and distinguish matching vs differing role-bound Windows readback.
+- Add explicit bounded Shelf clipboard copy and per-file handle release; no original-file mutation.
+- Clarify media request acceptance, refine all 16 workspace surfaces and extend model regression.
+- Windows native acceptance, full independent redesign, OS-wide notifications and new comparative parity remain unverified/incomplete.
+
 ## Consolidated candidate freeze
 
 - 281 focused assertions passed (28 new, 253 prior); 408 unique IDs and 16 routes. Bound state writes to the same 32 MB recovery limit. All prior CI gates preserved. Publish one candidate after source assembly; new Windows/browser acceptance pending. See docs/INTEGRATED_CONTINUATION_REPORT.md.
