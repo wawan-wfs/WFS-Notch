@@ -3,6 +3,7 @@
 param(
   [Parameter(Mandatory=$true)][string]$Exe,
   [string]$CertificateThumbprint,
+  [string]$ExpectedExeSha256,
   [switch]$PackageValidationOnly,
   [Parameter(Mandatory=$true)][string]$Output
 )
@@ -10,12 +11,15 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $exePath = (Resolve-Path -LiteralPath $Exe).Path
 if ([IO.Path]::GetFileName($exePath) -ne 'wfs-notch.exe') { throw 'Select the exact WFS Notch release EXE.' }
+$sourceHash = (Get-FileHash -LiteralPath $exePath -Algorithm SHA256).Hash
+if ($ExpectedExeSha256 -and ($ExpectedExeSha256 -notmatch '^[0-9a-fA-F]{64}$' -or $sourceHash -ne $ExpectedExeSha256)) { throw 'Source executable hash mismatch.' }
 $make = (Get-Command makeappx.exe -ErrorAction Stop).Source
 if (-not $PackageValidationOnly) {
-  if (-not $CertificateThumbprint) { throw 'Trusted signing certificate thumbprint required.' }
+  if (-not $CertificateThumbprint -or -not $ExpectedExeSha256) { throw 'Trusted signing certificate thumbprint and expected CI executable SHA256 required.' }
   $sign = (Get-Command signtool.exe -ErrorAction Stop).Source
   $cert = Get-Item -LiteralPath "Cert:\CurrentUser\My\$CertificateThumbprint"
-  if (-not $cert.HasPrivateKey -or $cert.NotAfter -le (Get-Date)) { throw 'Valid existing signing certificate required.' }
+  if (-not $cert.HasPrivateKey -or $cert.NotAfter -le (Get-Date) -or $cert.NotBefore -gt (Get-Date)) { throw 'Valid existing signing certificate required.' }
+  if (-not ($cert.EnhancedKeyUsageList | Where-Object { $_.ObjectId.Value -eq '1.3.6.1.5.5.7.3.3' })) { throw 'Code-signing EKU required.' }
 } elseif ($CertificateThumbprint) { throw 'Do not provide a certificate for validation-only mode.' }
 $outPath = [IO.Path]::GetFullPath($Output)
 if ([IO.Path]::GetExtension($outPath) -ne '.msix' -or (Test-Path -LiteralPath $outPath)) { throw 'Choose a new .msix output path.' }
@@ -23,6 +27,7 @@ $stage = Join-Path ([IO.Path]::GetTempPath()) ('wfs-notch-msix-'+[guid]::NewGuid
 try {
   New-Item -ItemType Directory -Path (Join-Path $stage 'Assets') -Force | Out-Null
   Copy-Item -LiteralPath $exePath -Destination (Join-Path $stage 'wfs-notch.exe')
+  if ((Get-FileHash -LiteralPath (Join-Path $stage 'wfs-notch.exe') -Algorithm SHA256).Hash -ne $sourceHash) { throw 'Staged executable hash mismatch.' }
   [xml]$manifest = Get-Content -Raw -LiteralPath (Join-Path $root 'packaging/AppxManifest.xml')
   if (-not $PackageValidationOnly) { $manifest.Package.Identity.Publisher = $cert.Subject }
   $manifest.Save((Join-Path $stage 'AppxManifest.xml'))
@@ -50,6 +55,9 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Package signature verification failed.' }
   }
   Get-FileHash -LiteralPath $outPath -Algorithm SHA256
+} catch {
+  if (Test-Path -LiteralPath $outPath) { Remove-Item -LiteralPath $outPath -Force }
+  throw
 } finally {
   Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue
 }

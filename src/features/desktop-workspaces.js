@@ -149,13 +149,21 @@ function wfs57BundleNoteDraft(value,title){
   if(typeof title!=='string'||!title.trim()||[...title.trim()].length>200||typeof value!=='string'||!value.trim()||value.length>50000||value.includes(String.fromCharCode(0)))return null;
   return {title:title.trim(),body:value,tags:['shelf','bundle']};
 }
-let wfs55OsTicket=0,wfs55OsBusy=false,wfs55OsAllowed=false,wfs55History=[],wfs55Current=[];
+let wfs55OsTicket=0,wfs55OsBusy=false,wfs55OsAllowed=false,wfs55History=[],wfs55Current=[],wfs58OsExpiry=0,wfs58StopPending=null;
+function wfs58ConsentRemaining(expires,now){return Math.max(0,Math.ceil((expires-now)/1000));}
+function wfs58ConsentTick(){
+  const host=$('#wfs58-os-expiry');if(!host)return;
+  if(!wfs55OsAllowed){host.textContent='No active consent lease.';return;}
+  const remaining=wfs58ConsentRemaining(wfs58OsExpiry,Date.now());
+  if(!remaining){wfs55StopOs();$('#wfs55-os-status').textContent='Consent lease expired. Explicitly allow a new session.';return;}
+  host.textContent='Consent expires in '+Math.floor(remaining/60)+':'+String(remaining%60).padStart(2,'0')+' · no automatic collection';
+}
 const wfs55OsMessages={unpackaged:'Package identity unavailable (standard NSIS/portable). Optional MSIX required.',package_unavailable:'WFS package identity unavailable.',manifest_unavailable:'Installed package manifest could not be verified.',missing_capability:'Installed package does not declare userNotificationListener.',listener_unavailable:'Windows notification listener unavailable.',permission_request_unavailable:'Windows permission prompt unavailable.',denied:'Windows denied access. Change permissions in Windows Settings if desired.',unspecified:'Windows permission has not been granted.',allowed:'Windows permission allowed. Explicit session consent still required.',session_stopped:'Session stopped before permission completed.',unsupported:'Windows packaged listener required.'};
 function wfs55OsButtons(){
   const check=$('#wfs55-os-check');if(!check)return;
-  check.disabled=!nativeInvoke||wfs55OsBusy;
-  $('#wfs55-os-consent').disabled=!nativeInvoke||wfs55OsBusy||wfs55OsAllowed;
-  $('#wfs55-os-read').disabled=!nativeInvoke||wfs55OsBusy||!wfs55OsAllowed;
+  check.disabled=!nativeInvoke||wfs55OsBusy||!!wfs58StopPending;
+  $('#wfs55-os-consent').disabled=!nativeInvoke||wfs55OsBusy||wfs55OsAllowed||!!wfs58StopPending;
+  $('#wfs55-os-read').disabled=!nativeInvoke||wfs55OsBusy||!wfs55OsAllowed||!!wfs58StopPending;
   $('#wfs55-os-stop').disabled=!nativeInvoke||(!wfs55OsBusy&&!wfs55OsAllowed&&!wfs55History.length);
 }
 function wfs55RenderOs(){
@@ -176,15 +184,20 @@ function wfs55StopOs(){
   const status=$('#wfs55-os-status');if(!status)return;
   const wasActive=wfs55OsBusy||wfs55OsAllowed||wfs55History.length;
   const ticket=++wfs55OsTicket;wfs55OsBusy=false;wfs55OsAllowed=false;wfs55History=[];wfs55Current=[];
+  wfs58OsExpiry=0;wfs58ConsentTick();
   const delta=$('#wfs57-os-delta');if(delta)delta.textContent='No snapshot compared.';
   $('#wfs55-os-filter').value='';$('#wfs56-os-mode').value='all';$('#wfs56-os-age').value='all';wfs55RenderOs();wfs55OsButtons();
   if(wasActive){
     status.textContent='Session cleared. Windows system permission unchanged; revoke in Windows Settings if desired.';
-    if(nativeInvoke)void invoke('stop_os_notification_session').catch(()=>{if(ticket===wfs55OsTicket)status.textContent='Local view cleared; Windows session stop not confirmed.';});
+    if(nativeInvoke&&!wfs58StopPending){
+      wfs58StopPending=Promise.resolve().then(()=>invoke('stop_os_notification_session')).catch(()=>{if(ticket===wfs55OsTicket)status.textContent='Local view cleared; Windows session stop not confirmed.';}).finally(()=>{wfs58StopPending=null;wfs55OsButtons();});
+      wfs55OsButtons();
+    }
   }
 }
 async function wfs55OsAction(action){
-  if(!nativeInvoke||wfs55OsBusy||activeTab!=='settings'||!isExpanded)return;
+  if(!nativeInvoke||wfs55OsBusy||wfs58StopPending||activeTab!=='settings'||!isExpanded||document.hidden)return;
+  if(wfs55OsAllowed&&wfs58ConsentRemaining(wfs58OsExpiry,Date.now())===0){wfs58ConsentTick();return;}
   if(action==='read'&&!wfs55OsAllowed)return;
   if(action==='consent'&&!confirm('Allow WFS Notch to read notification app names and times only when you request a snapshot in this session? No message contents or persistent history.'))return;
   const ticket=++wfs55OsTicket;wfs55OsBusy=true;wfs55OsButtons();
@@ -202,7 +215,7 @@ async function wfs55OsAction(action){
       status.textContent=result.total+' Windows notification(s) reported · '+wfs55History.length+' observed in this session'+(result.truncated?' · partial snapshot':'')+'.';
       wfs55RenderOs();
     }else if(action==='consent'&&result==='allowed'){
-      wfs55OsAllowed=true;status.textContent='Session allowed. Choose Read current notifications; no automatic collection.';
+      wfs55OsAllowed=true;wfs58OsExpiry=Date.now()+600000;wfs58ConsentTick();status.textContent='Session allowed. Choose Read current notifications; no automatic collection.';
     }else{
       if(result!=='allowed'&&wfs55OsAllowed)wfs55StopOs();
       status.textContent=result==='allowed'&&wfs55OsAllowed?'Windows permission still allowed for this session. Read only on request.':wfs55OsMessages[result]||'Windows access could not be verified.';
@@ -220,7 +233,7 @@ function wfs55ClearAudio(){
   $('#wfs55-audio-read').disabled=!nativeInvoke;$('#wfs55-audio-panel').disabled=!nativeInvoke;
 }
 async function wfs55ReadAudio(){
-  if(!nativeInvoke||wfs55AudioBusy||activeTab!=='system')return;
+  if(!nativeInvoke||wfs55AudioBusy||activeTab!=='system'||!isExpanded||document.hidden)return;
   const ticket=++wfs55AudioTicket,host=$('#wfs55-audio-rows'),status=$('#wfs55-audio-status');
   wfs55AudioBusy=true;$('#wfs55-audio-read').disabled=true;host.replaceChildren();status.textContent='Reading Windows output roles…';
   try{
@@ -229,6 +242,16 @@ async function wfs55ReadAudio(){
     for(const row of rows){
       const card=node('div','wfs55-role-card');
       card.append(node('small','',row.role),node('b','',row.percent===null?'Unavailable':row.percent+'%'),node('span','',row.group===null?'No reading':'Group '+row.group+' · '+(row.muted?'Muted':'Unmuted')));
+      if(row.group!==null){
+        const choose=node('button','secondary','Inspect '+row.role);choose.type='button';
+        choose.addEventListener('click',()=>{
+          if(activeTab!=='system'||!isExpanded||ticket!==wfs55AudioTicket)return;
+          const selector=$('#wfs53-output-role');selector.value=row.role;
+          selector.dispatchEvent(new Event('change',{bubbles:true}));
+          wfs56JumpTo($('#panel-system'),'wfs52-volume-read');
+        });
+        card.append(choose);
+      }
       host.append(card);
     }
     const groups=wfs56AudioGroups(rows),changes=wfs57AudioChanges(wfs57PreviousAudio,rows),comparison=$('#wfs57-audio-changes');
@@ -287,6 +310,7 @@ async function wfs55CopyBundle(){
   const review=wfs55Bundle;if(!review||activeTab!=='dock'||!isExpanded)return;
   if(review.selected.some(x=>wfs52ShelfHandles.get(x.key)!==x.file)){wfs55ClearBundle();return;}
   if(!confirm('Copy this reviewed text bundle to the system clipboard? Other apps may read it.'))return;
+  if(review!==wfs55Bundle||activeTab!=='dock'||!isExpanded||document.hidden||review.selected.some(x=>wfs52ShelfHandles.get(x.key)!==x.file))return;
   try{await navigator.clipboard.writeText(review.value);if(wfs55Bundle===review)$('#wfs55-bundle-status').textContent='Reviewed bundle copied.';}
   catch{if(wfs55Bundle===review)$('#wfs55-bundle-status').textContent='Clipboard unavailable; no copy confirmed.';}
 }
@@ -297,10 +321,11 @@ function wfs57BundleNoteState(){
 }
 async function wfs57SaveBundleNote(){
   const review=wfs55Bundle;
-  if(!review||wfs57BundleNoteBusy||activeTab!=='dock'||!isExpanded||appDataLoadStatus!=='ready')return;
+  if(!review||wfs57BundleNoteBusy||activeTab!=='dock'||!isExpanded||document.hidden||appDataLoadStatus!=='ready')return;
   if(review.selected.some(x=>wfs52ShelfHandles.get(x.key)!==x.file)){wfs55ClearBundle();return;}
   const draft=wfs57BundleNoteDraft(review.value,$('#wfs57-bundle-title').value);if(!draft)return;
   if(!confirm('Persist this complete reviewed bundle as a new local note? Original files remain unchanged.'))return;
+  if(review!==wfs55Bundle||activeTab!=='dock'||!isExpanded||document.hidden||review.selected.some(x=>wfs52ShelfHandles.get(x.key)!==x.file))return;
   wfs57BundleNoteBusy=true;wfs57BundleNoteState();
   try{if(await mutation('create_note_from_draft',draft)){if(wfs55Bundle===review){wfs55ClearBundle();$('#wfs55-bundle-status').textContent='Reviewed bundle saved as a new local note.';}showInfo('New local bundle note created.');}}
   finally{wfs57BundleNoteBusy=false;wfs57BundleNoteState();}
@@ -347,7 +372,8 @@ function wfs55Init(){
   $('#wfs55-bundle-clear').addEventListener('click',wfs55ClearBundle);
   $('#wfs57-bundle-title').addEventListener('input',wfs57BundleNoteState);
   $('#wfs57-bundle-note').addEventListener('click',()=>void wfs57SaveBundleNote());
-  window.addEventListener('focus',()=>{if(wfs55OsAllowed&&activeTab==='settings'&&!wfs55OsBusy)void wfs55OsAction('check');});
+  window.addEventListener('focus',()=>{wfs58ConsentTick();if(wfs55OsAllowed&&activeTab==='settings'&&!wfs55OsBusy)void wfs55OsAction('check');});
+  setInterval(wfs58ConsentTick,1000);
   wfs55OsButtons();wfs55ClearAudio();wfs55ClearBundle();wfs56RenderBundleChoices();wfs56InitLandmarks();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wfs55Init,{once:true});else wfs55Init();

@@ -159,6 +159,7 @@ with sync_playwright() as pw:
         expect(page.locator('#wfs55-restore-impact')).to_contain_text('1 changed')
         expect(page.locator('#wfs56-restore-risk')).to_contain_text('tasks: 1 removed, 1 changed')
         expect(page.locator('#wfs55-os-consent')).to_be_disabled()
+        expect(page.locator('#wfs58-os-expiry')).to_have_text('No active consent lease.')
         expect(page.locator('#wfs55-os-read')).to_be_disabled()
         check(page.locator('#wfs55-os-rows').text_content()=='','no synthetic OS notifications')
         check('Edited after snapshot' not in page.locator('#wfs53-restore-rows').inner_text(),'review does not expose task title')

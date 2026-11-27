@@ -2688,6 +2688,9 @@ fn set_expanded(
         .data
         .settings
         .clone();
+    if !expanded {
+        os_notifications::stop_os_notification_session();
+    }
     display::place_notch(&window, &settings, expanded)
 }
 
@@ -2746,6 +2749,7 @@ fn main() {
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
+                os_notifications::stop_os_notification_session();
                 let _ = window.hide();
             }
         })

@@ -1,5 +1,11 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Integrated bounded consent and native workflow candidate
+
+- Add native ten-minute monotonic notification consent lease, serialized permission checks, UTF-16 package manifest decoding, stop on native collapse and close. No body collection, no auto-read or persistence.
+- Add session countdown and serialized stop UI, inspect output role from snapshot, recheck Shelf confirmation state, clear transient previews during restore and document hide.
+- Strengthen signed MSIX build with explicit expected executable SHA256, code-signing EKU, staged hash and failure cleanup. No certificate creation, trust changes or installation.
+
 ## Integrated media privacy and desktop workflow continuation
 
 - Repair Phase 22 browser harness to explicitly expand the container; retain hidden polling guard and add collapse/in-flight checks.

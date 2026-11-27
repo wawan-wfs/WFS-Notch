@@ -1,3 +1,7 @@
+# Next integrated native acceptance
+
+Baseline c52306f583ae passed run 45945363930 (3/3 jobs, 133 Rust tests, 70 integrated Chromium assertions and 80 screenshot matrix; unsigned MSIX pack validation only). Verify the next exact CI after bounded consent, manifest decoding, native collapse/close stop, audio role inspection, Shelf confirmation guards, restore privacy and signed MSIX source hash validation. Do not count native tests until actual authorized Windows consent, physical devices, signed package, upgrade/uninstall and same-host Poni comparison. Retain historic 28.9%; continue 16-module structural redesign and full 38-category evidence. Development First, Integrated CI Last, no force push or deployment.
+
 # Next consolidated media and native acceptance
 
 Verify the next exact CI after 2760d6a34d66. Run 45944438840 passed Windows NSIS, unsigned MSIX pack/unpack/hash, 133 Rust tests, Clippy, rustfmt, 68 integrated browser assertions, but Phase 22 media harness failed because expanded container was hidden. Repair harness and privacy lifecycle; verify new exact run and 80 screenshots. Continue real signed MSIX permission/installation and physical Windows device acceptance, full independent 16-module redesign and 38-category Poni 1.5.0 comparison; retain 28.9% historical parity until evidence. New snapshot comparison and bundle note flow are candidate code, require browser/native acceptance. No auto-deployment/force push or reduced gates.

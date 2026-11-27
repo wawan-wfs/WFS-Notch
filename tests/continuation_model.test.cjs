@@ -94,3 +94,10 @@ check57(m57.wfs57BundleNoteDraft('literal <script>','Bundle').body==='literal <s
 check57(m57.wfs57BundleNoteDraft('a'.repeat(50001),'Bundle')===null,'note bound');
 check57(m57.wfs57BundleNoteDraft('a',' ')===null,'empty note title');
 console.log('PASS: '+n57+' audio difference, notification delta and bundle note assertions');
+
+const remaining58=new Function(w55.slice(w55.indexOf('function wfs58ConsentRemaining'),w55.indexOf('function wfs58ConsentTick'))+'return wfs58ConsentRemaining;')();
+assert.ok(remaining58(600000,0)===600,'ten minute lease');
+assert.ok(remaining58(1000,999)===1,'round up remaining seconds');
+assert.ok(remaining58(1000,1000)===0,'expiry boundary');
+assert.ok(remaining58(1000,5000)===0,'no negative lease');
+console.log('PASS: 4 consent lease display assertions');

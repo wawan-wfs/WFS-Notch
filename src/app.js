@@ -1784,6 +1784,8 @@ function bind() {
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && pendingDraft) void flushNote();
     if(document.hidden&&typeof wfs55StopOs==='function')wfs55StopOs();
+    if(document.hidden&&typeof wfs55ClearAudio==='function')wfs55ClearAudio();
+    if(document.hidden&&typeof wfs55ClearBundle==='function')wfs55ClearBundle();
     if(document.hidden&&activeTab==='media'&&typeof suspendMediaDetails==='function')suspendMediaDetails();
   });
 }

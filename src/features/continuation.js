@@ -89,6 +89,10 @@ async function wfs53ApplyRestore(){
   try{
     if(!await flushNote())return;
     const task=writeQueue.catch(()=>{}).then(async()=>{
+      if(wfs53Review!==review||activeTab!=='settings'||!isExpanded||document.hidden)throw Error('Restore review is no longer active');
+      if(typeof wfs55StopOs==='function')wfs55StopOs();
+      if(typeof wfs55ClearBundle==='function')wfs55ClearBundle();
+      if(typeof wfs55ClearAudio==='function')wfs55ClearAudio();
       const result=await invoke('restore_backup_reviewed',{id:review.id,token:review.result.token});
       if(!result?.data||!result?.safety_backup?.id)throw Error('Unexpected restore response; reload local state.');
       data=result.data;selectedNoteId=null;boundEditorId=null;pendingDraft=null;

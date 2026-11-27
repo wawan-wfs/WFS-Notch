@@ -3,7 +3,8 @@ use serde::Serialize;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 static EPOCH: AtomicU64 = AtomicU64::new(1);
-static ALLOWED_EPOCH: AtomicU64 = AtomicU64::new(0);
+#[cfg(windows)]
+static CONSENT: std::sync::Mutex<Option<(u64, std::time::Instant)>> = std::sync::Mutex::new(None);
 
 #[derive(Serialize)]
 pub struct OsNotificationRow {
@@ -22,7 +23,10 @@ pub struct OsNotificationSnapshot {
 #[tauri::command]
 pub fn stop_os_notification_session() {
     EPOCH.fetch_add(1, Ordering::SeqCst);
-    ALLOWED_EPOCH.store(0, Ordering::SeqCst);
+    #[cfg(windows)]
+    if let Ok(mut consent) = CONSENT.lock() {
+        *consent = None;
+    }
 }
 
 #[cfg(windows)]
@@ -56,6 +60,30 @@ mod platform {
         }
     }
 
+    fn decode_manifest(bytes: &[u8]) -> Option<String> {
+        let (data, little) = if let Some(data) = bytes.strip_prefix(&[0xff, 0xfe]) {
+            (data, true)
+        } else if let Some(data) = bytes.strip_prefix(&[0xfe, 0xff]) {
+            (data, false)
+        } else {
+            return std::str::from_utf8(bytes).ok().map(str::to_owned);
+        };
+        if !data.chunks_exact(2).remainder().is_empty() {
+            return None;
+        }
+        let units: Vec<u16> = data
+            .chunks_exact(2)
+            .map(|pair| {
+                if little {
+                    u16::from_le_bytes([pair[0], pair[1]])
+                } else {
+                    u16::from_be_bytes([pair[0], pair[1]])
+                }
+            })
+            .collect();
+        String::from_utf16(&units).ok()
+    }
+
     pub fn listener() -> Result<UserNotificationListener, &'static str> {
         let package = Package::Current().map_err(|_| "unpackaged")?;
         let name = package
@@ -75,7 +103,7 @@ mod platform {
         if bytes.len() > 262_144 {
             return Err("manifest_unavailable");
         }
-        let xml = std::str::from_utf8(&bytes).map_err(|_| "manifest_unavailable")?;
+        let xml = decode_manifest(&bytes).ok_or("manifest_unavailable")?;
         if xml.contains("<!DOCTYPE") || xml.contains("<!ENTITY") {
             return Err("manifest_unavailable");
         }
@@ -120,10 +148,33 @@ mod platform {
         }
     }
 
+    fn lease_valid(
+        lease: Option<(u64, std::time::Instant)>,
+        epoch: u64,
+        now: std::time::Instant,
+    ) -> bool {
+        lease.is_some_and(|(allowed, expires)| allowed == epoch && now < expires)
+    }
+
     pub fn permitted(epoch: u64) -> bool {
         epoch != 0
-            && EPOCH.load(Ordering::SeqCst) == epoch
-            && ALLOWED_EPOCH.load(Ordering::SeqCst) == epoch
+            && CONSENT.lock().is_ok_and(|lease| {
+                EPOCH.load(Ordering::SeqCst) == epoch
+                    && lease_valid(*lease, epoch, std::time::Instant::now())
+            })
+    }
+
+    pub fn grant(epoch: u64) -> bool {
+        if let Ok(mut lease) = CONSENT.lock() {
+            if EPOCH.load(Ordering::SeqCst) == epoch {
+                *lease = Some((
+                    epoch,
+                    std::time::Instant::now() + std::time::Duration::from_secs(600),
+                ));
+                return true;
+            }
+        }
+        false
     }
 
     fn clean_name(value: &str) -> String {
@@ -153,7 +204,7 @@ mod platform {
         }
         let listener = listener().map_err(str::to_owned)?;
         if listener.GetAccessStatus().ok() != Some(Access::Allowed) {
-            ALLOWED_EPOCH.store(0, Ordering::SeqCst);
+            stop_os_notification_session();
             return Err("Windows notification access is no longer allowed".into());
         }
         let view = listener
@@ -188,7 +239,7 @@ mod platform {
             rows.push(OsNotificationRow { id, at_ms, app });
         }
         if !permitted(epoch) || listener.GetAccessStatus().ok() != Some(Access::Allowed) {
-            ALLOWED_EPOCH.store(0, Ordering::SeqCst);
+            stop_os_notification_session();
             return Err("Notification permission or session changed".into());
         }
         rows.sort_by_key(|row| std::cmp::Reverse(row.at_ms));
@@ -207,6 +258,10 @@ mod platform {
 
         #[test]
         fn metadata_bounds_and_redaction() {
+            assert_eq!(decode_manifest(b"<a/>").as_deref(), Some("<a/>"));
+            assert_eq!(decode_manifest(&[0xff, 0xfe, 65, 0]).as_deref(), Some("A"));
+            assert_eq!(decode_manifest(&[0xfe, 0xff, 0, 65]).as_deref(), Some("A"));
+            assert!(decode_manifest(&[0xff, 0xfe, 0]).is_none());
             assert_eq!(unix_ms(116_444_736_000_000_000), Some(0));
             assert_eq!(unix_ms(116_444_735_999_999_999), None);
             assert_eq!(unix_ms(i64::MIN), None);
@@ -221,11 +276,22 @@ mod platform {
             stop_os_notification_session();
             let epoch = EPOCH.load(Ordering::SeqCst);
             assert!(!permitted(epoch));
-            ALLOWED_EPOCH.store(epoch, Ordering::SeqCst);
+            assert!(grant(epoch));
             assert!(permitted(epoch));
             stop_os_notification_session();
             assert!(!permitted(epoch));
             assert!(read(epoch).is_err());
+            assert!(!grant(epoch));
+        }
+
+        #[test]
+        fn lease_expiration_and_wrong_epoch() {
+            let now = std::time::Instant::now();
+            let expires = now + std::time::Duration::from_secs(1);
+            assert!(lease_valid(Some((7, expires)), 7, now));
+            assert!(!lease_valid(Some((7, expires)), 8, now));
+            assert!(!lease_valid(Some((7, expires)), 7, expires));
+            assert!(!lease_valid(None, 7, now));
         }
     }
 }
@@ -234,9 +300,17 @@ mod platform {
 pub async fn get_os_notification_access() -> Result<String, String> {
     #[cfg(windows)]
     {
-        tauri::async_runtime::spawn_blocking(platform::access)
-            .await
-            .map_err(|_| "Notification access worker failed".into())
+        let guard = platform::Guard::acquire()?;
+        tauri::async_runtime::spawn_blocking(move || {
+            let _guard = guard;
+            let status = platform::access();
+            if status != "allowed" {
+                stop_os_notification_session();
+            }
+            status
+        })
+        .await
+        .map_err(|_| "Notification access worker failed".into())
     }
     #[cfg(not(windows))]
     {
@@ -279,8 +353,7 @@ pub async fn request_os_notification_access(app: tauri::AppHandle) -> Result<Str
                 .join()
                 .map_err(|_| "Windows permission prompt failed")?;
             let status = platform::status(value);
-            if status == "allowed" && EPOCH.load(Ordering::SeqCst) == epoch {
-                ALLOWED_EPOCH.store(epoch, Ordering::SeqCst);
+            if status == "allowed" && platform::grant(epoch) {
                 Ok(status.into())
             } else if status == "allowed" {
                 Ok("session_stopped".into())
