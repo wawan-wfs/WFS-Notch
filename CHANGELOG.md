@@ -1,5 +1,11 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Integrated media privacy and desktop workflow continuation
+
+- Repair Phase 22 browser harness to explicitly expand the container; retain hidden polling guard and add collapse/in-flight checks.
+- Invalidate media requests by view epoch, clear media metadata on collapse/navigation/visibility loss, prevent hidden controls and stale command receipt.
+- Compare notification snapshots and audio role observations without claiming dismissal or device identity. Save explicitly reviewed Shelf text bundles to new local Notes within existing limits.
+
 - Add 48 workspace-specific section actions across all 16 modules, focus-safe disclosure expansion, responsive module layouts, exact navigation regression and browser acceptance coverage.
 
 ## Integrated recovery and package validation candidate

@@ -79,3 +79,18 @@ console.log('PASS: 19 workspace landmark assertions (16 scoped maps, count and f
 const app56=fs.readFileSync('src/app.js','utf8');
 assert.ok(app56.includes("$$('.tab').forEach(button => {")&&!/^\s*\$\('\.tab'\)\.forEach\(/m.test(app56),'navigation uses collection selector');
 console.log('PASS: navigation collection regression');
+
+const m57=new Function(w55.slice(w55.indexOf('function wfs57AudioChanges'),w55.indexOf('let wfs55OsTicket'))+'return {wfs57AudioChanges,wfs57HistoryDelta,wfs57BundleNoteDraft};')();
+let n57=0;const check57=(v,k)=>{assert.ok(v,k);n57++;};
+check57(m57.wfs57AudioChanges(null,roles55).length===0,'first snapshot no comparison');
+check57(m57.wfs57AudioChanges(roles55,roles55).length===0,'same role values');
+const renumber57=roles55.map(r=>r.group===null?r:{...r,group:3});
+check57(m57.wfs57AudioChanges(roles55,renumber57).length===0,'snapshot group id not endpoint identity');
+check57(m57.wfs57AudioChanges(roles55,[{...roles55[0],percent:65},roles55[1],roles55[2]])[0].includes('55% → 65%'),'volume observation');
+check57(m57.wfs57AudioChanges(roles55,[{...roles55[0],group:2},roles55[1],roles55[2]]).length===2,'role sharing changed');
+check57(m57.wfs57HistoryDelta([rows56[0]],[rows56[1]],true).notReturned===1,'partial read not returned');
+check57(m57.wfs57HistoryDelta([rows56[0]],[rows56[0],rows56[0]],false).newlyObserved===0,'deduplicate notification identities');
+check57(m57.wfs57BundleNoteDraft('literal <script>','Bundle').body==='literal <script>','literal bundle note');
+check57(m57.wfs57BundleNoteDraft('a'.repeat(50001),'Bundle')===null,'note bound');
+check57(m57.wfs57BundleNoteDraft('a',' ')===null,'empty note title');
+console.log('PASS: '+n57+' audio difference, notification delta and bundle note assertions');

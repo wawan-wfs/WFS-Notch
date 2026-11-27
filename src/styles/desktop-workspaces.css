@@ -49,3 +49,6 @@
 #panel-settings .display-inputs{display:flex;flex-wrap:wrap;gap:6px}#panel-settings .settings-row{gap:8px}
 @media(max-width:560px){#panel-home .home-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#panel-notes .note-layout{grid-template-columns:minmax(80px,0.8fr) minmax(0,1.4fr)}#panel-tools .tools-grid{grid-template-columns:1fr}.wfs56-landmarks button{padding:4px 6px}}
 @media(forced-colors:active){.wfs56-landmarks{border-color:ButtonText}.wfs56-landmarks button:focus-visible{outline-color:Highlight}}
+
+/* Focused activity and transfer surfaces, no new navigation layers. */
+#wfs57-audio-changes{padding:8px 18px;border:1px solid var(--line);border-radius:10px}#wfs57-audio-changes:empty{display:none}#wfs57-os-delta{border-left:2px solid var(--accent);padding-left:8px}#wfs57-bundle-title{width:100%;min-width:0;margin:5px 0}#wfs57-bundle-note{margin-bottom:5px}

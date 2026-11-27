@@ -1,3 +1,7 @@
+# Next consolidated media and native acceptance
+
+Verify the next exact CI after 2760d6a34d66. Run 45944438840 passed Windows NSIS, unsigned MSIX pack/unpack/hash, 133 Rust tests, Clippy, rustfmt, 68 integrated browser assertions, but Phase 22 media harness failed because expanded container was hidden. Repair harness and privacy lifecycle; verify new exact run and 80 screenshots. Continue real signed MSIX permission/installation and physical Windows device acceptance, full independent 16-module redesign and 38-category Poni 1.5.0 comparison; retain 28.9% historical parity until evidence. New snapshot comparison and bundle note flow are candidate code, require browser/native acceptance. No auto-deployment/force push or reduced gates.
+
 # Continuation — workspace acceptance
 
 Verify the final candidate CI and new package validation report; resolve any exact compile, lint, browser or MakeAppx failures before new publication. New 48 workspace landmarks and tailored layouts require screenshot and keyboard acceptance, not a full redesign claim. Use actual packaged Windows 10/11 with a trusted signer for consent/revocation and native device acceptance. Preserve all existing gates and Development First / Integrated CI Last.

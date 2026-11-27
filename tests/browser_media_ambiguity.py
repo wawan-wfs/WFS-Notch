@@ -21,7 +21,10 @@ with sync_playwright() as pw:
     html = re.sub(r'<script\b[^>]*>\s*</script>', "", html)
     html = re.sub(r'<link rel="stylesheet"[^>]*>', "", html)
     page.set_content(html)
-    page.evaluate("""() => document.querySelector('#panel-media').classList.add('active')""")
+    page.evaluate("""() => {
+      document.querySelector('#expanded').hidden=false;
+      document.querySelector('#panel-media').classList.add('active');
+    }""")
     page.add_script_tag(content="""const __testMedia = {
       calls: [],
       sessions: [
@@ -57,8 +60,8 @@ with sync_playwright() as pw:
     assert page.locator("#media-player-picker").input_value() == "spotify.id"
     assert page.locator('[data-selected-media="toggle"]').is_enabled()
     assert page.locator("#media-track-title").inner_text() == "Spotify track"
-    # This isolated harness does not run the app's expanded-panel controller;
-    # dispatch JS activation rather than a physical click on hidden demo UI.
+    # This isolated harness explicitly opens the expanded container, matching production.
+    # Dispatch JS activation to avoid depending on unrelated stylesheet geometry.
     page.evaluate("""() => document.querySelector('[data-selected-media="toggle"]').click()""")
     page.wait_for_function("() => __testMedia.calls.some(x => x.command === 'control_media_session')")
     page.wait_for_function("() => !mediaDetailsPending")
@@ -118,6 +121,28 @@ with sync_playwright() as pw:
     page.wait_for_function("() => !mediaDetailsPending && document.querySelector('#media-player-picker').value === ''")
     assert page.locator('[data-selected-media="toggle"]').is_disabled()
     assert "Choose another player" in page.locator("#media-player-status").inner_text()
+    # Actual privacy lifecycle regression: no reads or controls when collapsed,
+    # and a previously in-flight response must not repopulate the card.
+    page.evaluate("""async()=> {
+      __testMedia.blocked=false;
+      const picker=document.querySelector('#media-player-picker');
+      picker.value='spotify.id';picker.dispatchEvent(new Event('change',{bubbles:true}));
+    }""")
+    page.wait_for_function("()=>!mediaDetailsPending && document.querySelector('#media-player-picker').value==='spotify.id'")
+    page.evaluate("""()=> {
+      __testMedia.blocked=true;__testMedia.release=null;
+      __testMedia.pending=refreshMediaDetails(true);
+    }""")
+    page.wait_for_function("()=>typeof __testMedia.release==='function'")
+    page.evaluate("""async()=> {
+      document.querySelector('#expanded').hidden=true;suspendMediaDetails();
+      const count=__testMedia.calls.length;
+      await refreshMediaDetails(true);await controlSelectedPlayer('toggle');
+      if(__testMedia.calls.length!==count)throw Error('Hidden panel issued IPC');
+      __testMedia.release(__testMedia.selected);await __testMedia.pending;
+    }""")
+    assert page.locator("#media-track-title").text_content() == "No active media session"
+    assert page.locator('[data-selected-media="toggle"]').is_disabled()
     assert not errors, f"Browser media JavaScript errors: {errors}"
     browser.close()
 print("PASS: GSMTC duplicate-app ambiguity, control restrictions, stale selection and bounded progress (mock only, native Windows NOT TESTED)")

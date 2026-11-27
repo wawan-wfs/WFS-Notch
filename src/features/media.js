@@ -10,6 +10,19 @@ let mediaControlPending = false;
 let mediaRefreshRequested = false;
 let mediaNeedsSelection = false;
 let mediaReadSequence = 0;
+let mediaViewEpoch = 0;
+function mediaVisible(){
+  return !!document.querySelector('#panel-media')?.classList.contains('active')&&!document.querySelector('#expanded')?.hidden&&!document.hidden;
+}
+function suspendMediaDetails(){
+  mediaViewEpoch++;
+  mediaDetailsLastAt=0;mediaRefreshRequested=false;
+  const picker=document.querySelector('#media-player-picker');
+  if(picker?.value)mediaNeedsSelection=true;
+  if(typeof wfs55ClearMedia==='function')wfs55ClearMedia();
+  renderSelectedPlayers([],null);
+  renderMediaDetails(null);
+}
 function mediaTime(ms) {
   if (!Number.isFinite(ms) || ms < 0) return '—';
   const secs = Math.floor(ms / 1000);
@@ -64,15 +77,16 @@ async function refreshMediaDetails(force = false) {
   if (!nativeInvoke) return;
   if(mediaControlPending&&!force)return;
   if (mediaDetailsPending) { if (force) mediaRefreshRequested = true; return; }
-  const panel = document.querySelector('#panel-media');
-  if (!panel?.classList.contains('active')||document.querySelector('#expanded')?.hidden||document.hidden) return;
+  if (!mediaVisible()) return;
   if (!force && Date.now() - mediaDetailsLastAt < 5000) return;
   mediaDetailsPending = true;
-  const readSequence=++mediaReadSequence;
+  const readSequence=++mediaReadSequence,epoch=mediaViewEpoch;
+  const currentView=()=>epoch===mediaViewEpoch&&mediaVisible();
   try {
     const active = await readMediaWithDeadline('get_active_media_session');
+    if(!currentView())return;
     const sessions = await readMediaWithDeadline('list_media_sessions');
-    if(!panel.classList.contains('active')||document.querySelector('#expanded')?.hidden||document.hidden)return;
+    if(!currentView())return;
     renderSelectedPlayers(sessions, active?.source);
     const picker = document.querySelector('#media-player-picker');
     const selected = picker.value;
@@ -87,7 +101,7 @@ async function refreshMediaDetails(force = false) {
     }
     const snapshot = selected && selected !== active?.source
       ? await readMediaWithDeadline('get_media_session_by_source', { source: selected }) : active;
-    if (!panel.classList.contains('active') || picker.value !== selected || document.querySelector('#expanded')?.hidden || document.hidden) return;
+    if (!currentView() || picker.value !== selected) return;
     if (selected && (!snapshot || snapshot.source !== selected)) {
       mediaNeedsSelection = true;
       renderSelectedPlayers(sessions, active?.source);
@@ -99,6 +113,7 @@ async function refreshMediaDetails(force = false) {
     renderMediaDetails(snapshot,readSequence);
     mediaDetailsLastAt = Date.now();
   } catch (error) {
+    if(!currentView())return;
     renderMediaDetails(null);
     renderSelectedPlayers([], null);
     document.querySelector('#media-track-artist').textContent = 'Windows media sessions are unavailable. Refresh to retry.';
@@ -113,9 +128,8 @@ async function refreshMediaDetails(force = false) {
   }
 }
 function updateInterpolatedProgress() {
-  const panel = document.querySelector('#panel-media');
   const snapshot = mediaLastSample;
-  if (!panel?.classList.contains('active') || !snapshot || snapshot.playback_status !== 'Playing') return;
+  if (!mediaVisible() || !snapshot || snapshot.playback_status !== 'Playing') return;
   const duration = Number(snapshot.duration_ms);
   const start = Number(snapshot.position_ms);
   if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(start)) return;
@@ -183,8 +197,8 @@ function renderSelectedPlayers(sessions, systemCurrentSource) {
 async function controlSelectedPlayer(action) {
   const picker = document.querySelector('#media-player-picker');
   const status = document.querySelector('#media-player-status');
-  if (!nativeInvoke || !picker.value || mediaControlPending) return;
-  const source = picker.value;
+  if (!nativeInvoke || !picker.value || mediaControlPending || !mediaVisible()) return;
+  const source = picker.value,epoch=mediaViewEpoch;
   const selected = mediaSessionChoices.find(item => item.source === source);
   if (!selected || selected.ambiguous === true) {
     status.textContent = 'Control refused: choose a uniquely identifiable Windows media session.';
@@ -196,12 +210,14 @@ async function controlSelectedPlayer(action) {
   for (const button of document.querySelectorAll('[data-selected-media]')) button.disabled = true;
   try {
     const accepted = await invoke('control_media_session', {source, action});
+    if(epoch!==mediaViewEpoch||!mediaVisible()||picker.value!==source)return;
     if(typeof wfs55StartMediaObservation==='function')wfs55StartMediaObservation(source,action,accepted===true);
     if (picker.value === source) status.textContent = accepted
       ? 'Command accepted by the selected media player. Refreshing playback state; acceptance is not proof of playback.'
       : 'The selected player did not accept that command.';
     await refreshMediaDetails(true);
   } catch (error) {
+    if(epoch!==mediaViewEpoch||!mediaVisible())return;
     renderSelectedPlayers([], null);
     renderMediaDetails(null);
     status.textContent = 'Selected media session unavailable. Refresh the list and choose again.';
@@ -212,7 +228,7 @@ async function controlSelectedPlayer(action) {
     const snapshot = mediaSessionChoices.find(item => item.source === picker.value);
     for (const button of document.querySelectorAll('[data-selected-media]')) {
       const flag = selectedMediaFlag(button.dataset.selectedMedia);
-      button.disabled = picker.disabled || !snapshot || snapshot.ambiguous === true || snapshot[flag] !== true;
+      button.disabled = !mediaVisible() || picker.disabled || !snapshot || snapshot.ambiguous === true || snapshot[flag] !== true;
     }
   }
 }

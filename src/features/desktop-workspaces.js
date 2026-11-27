@@ -125,6 +125,30 @@ function wfs56InitLandmarks(){
   }
 }
 
+function wfs57AudioChanges(before,after){
+  if(!before)return [];
+  return after.flatMap(row=>{
+    const old=before.find(r=>r.role===row.role);
+    if(!old)return [];
+    if(old.group===null||row.group===null)return old.group===row.group?[]:[row.role+': availability changed'];
+    const changes=[];
+    if(old.percent!==row.percent)changes.push(old.percent+'% → '+row.percent+'%');
+    if(old.muted!==row.muted)changes.push(row.muted?'muted':'unmuted');
+    // Group ids are snapshot-local; compare role sharing, never endpoint identity.
+    const peers=(all,r)=>all.filter(x=>x.role!==r.role&&x.group!==null&&x.group===r.group).map(x=>x.role).sort().join(',');
+    if(peers(before,old)!==peers(after,row))changes.push('role sharing changed');
+    return changes.length?[row.role+': '+changes.join(', ')]:[];
+  });
+}
+function wfs57HistoryDelta(previous,current,partial){
+  const key=r=>JSON.stringify([r.id,r.at_ms,r.app]);
+  const old=new Set(previous.map(key)),now=new Set(current.map(key));
+  return {newlyObserved:[...now].filter(k=>!old.has(k)).length,notReturned:[...old].filter(k=>!now.has(k)).length,partial:partial===true};
+}
+function wfs57BundleNoteDraft(value,title){
+  if(typeof title!=='string'||!title.trim()||[...title.trim()].length>200||typeof value!=='string'||!value.trim()||value.length>50000||value.includes(String.fromCharCode(0)))return null;
+  return {title:title.trim(),body:value,tags:['shelf','bundle']};
+}
 let wfs55OsTicket=0,wfs55OsBusy=false,wfs55OsAllowed=false,wfs55History=[],wfs55Current=[];
 const wfs55OsMessages={unpackaged:'Package identity unavailable (standard NSIS/portable). Optional MSIX required.',package_unavailable:'WFS package identity unavailable.',manifest_unavailable:'Installed package manifest could not be verified.',missing_capability:'Installed package does not declare userNotificationListener.',listener_unavailable:'Windows notification listener unavailable.',permission_request_unavailable:'Windows permission prompt unavailable.',denied:'Windows denied access. Change permissions in Windows Settings if desired.',unspecified:'Windows permission has not been granted.',allowed:'Windows permission allowed. Explicit session consent still required.',session_stopped:'Session stopped before permission completed.',unsupported:'Windows packaged listener required.'};
 function wfs55OsButtons(){
@@ -152,6 +176,7 @@ function wfs55StopOs(){
   const status=$('#wfs55-os-status');if(!status)return;
   const wasActive=wfs55OsBusy||wfs55OsAllowed||wfs55History.length;
   const ticket=++wfs55OsTicket;wfs55OsBusy=false;wfs55OsAllowed=false;wfs55History=[];wfs55Current=[];
+  const delta=$('#wfs57-os-delta');if(delta)delta.textContent='No snapshot compared.';
   $('#wfs55-os-filter').value='';$('#wfs56-os-mode').value='all';$('#wfs56-os-age').value='all';wfs55RenderOs();wfs55OsButtons();
   if(wasActive){
     status.textContent='Session cleared. Windows system permission unchanged; revoke in Windows Settings if desired.';
@@ -171,7 +196,9 @@ async function wfs55OsAction(action){
     else result=await deviceDeadline(()=>invoke('read_os_notification_snapshot'),10000);
     if(ticket!==wfs55OsTicket||activeTab!=='settings'||!isExpanded)return;
     if(action==='read'){
-      wfs55Current=wfs55OsRows(result);wfs55History=wfs55MergeHistory(wfs55History,wfs55Current);
+      const next=wfs55OsRows(result),delta=wfs57HistoryDelta(wfs55Current,next,result.truncated);
+      wfs55Current=next;wfs55History=wfs55MergeHistory(wfs55History,wfs55Current);
+      $('#wfs57-os-delta').textContent=delta.newlyObserved+' newly returned · '+delta.notReturned+' not returned compared with previous read'+(delta.partial?' · partial result':'')+'. Not proof of notification delivery or dismissal.';
       status.textContent=result.total+' Windows notification(s) reported · '+wfs55History.length+' observed in this session'+(result.truncated?' · partial snapshot':'')+'.';
       wfs55RenderOs();
     }else if(action==='consent'&&result==='allowed'){
@@ -184,11 +211,12 @@ async function wfs55OsAction(action){
     if(ticket===wfs55OsTicket){wfs55StopOs();status.textContent='Windows access or read unavailable. Session cleared; explicitly allow again to retry.';}
   }finally{if(ticket===wfs55OsTicket){wfs55OsBusy=false;wfs55OsButtons();}}
 }
-let wfs55AudioTicket=0,wfs55AudioBusy=false;
+let wfs55AudioTicket=0,wfs55AudioBusy=false,wfs57PreviousAudio=null;
 function wfs55ClearAudio(){
-  wfs55AudioTicket++;wfs55AudioBusy=false;
+  wfs55AudioTicket++;wfs55AudioBusy=false;wfs57PreviousAudio=null;
   const host=$('#wfs55-audio-rows');if(!host)return;host.replaceChildren();
   $('#wfs55-audio-status').textContent='Not requested.';
+  $('#wfs57-audio-changes').replaceChildren();
   $('#wfs55-audio-read').disabled=!nativeInvoke;$('#wfs55-audio-panel').disabled=!nativeInvoke;
 }
 async function wfs55ReadAudio(){
@@ -203,9 +231,12 @@ async function wfs55ReadAudio(){
       card.append(node('small','',row.role),node('b','',row.percent===null?'Unavailable':row.percent+'%'),node('span','',row.group===null?'No reading':'Group '+row.group+' · '+(row.muted?'Muted':'Unmuted')));
       host.append(card);
     }
-    const groups=wfs56AudioGroups(rows);
+    const groups=wfs56AudioGroups(rows),changes=wfs57AudioChanges(wfs57PreviousAudio,rows),comparison=$('#wfs57-audio-changes');
+    comparison.replaceChildren();
+    if(wfs57PreviousAudio){for(const line of changes.length?changes:['No observable role/volume changes.'])comparison.append(node('li','',line));}
+    wfs57PreviousAudio=rows;
     status.textContent='Read-only sequential Windows snapshot · '+groups.length+' available endpoint group(s) · '+(groups.join('; ')||'none')+'. Devices may change afterwards.';
-  }catch{if(ticket===wfs55AudioTicket)status.textContent='Role matrix unavailable. Read again.';}
+  }catch{if(ticket===wfs55AudioTicket){status.textContent='Role matrix unavailable. Read again.';wfs57PreviousAudio=null;$('#wfs57-audio-changes').replaceChildren();}}
   finally{if(ticket===wfs55AudioTicket){wfs55AudioBusy=false;$('#wfs55-audio-read').disabled=false;}}
 }
 let wfs55BundleTicket=0,wfs55Bundle=null,wfs56BundleExcluded=new Set();
@@ -227,6 +258,7 @@ function wfs55ClearBundle(){
   wfs55BundleTicket++;wfs55Bundle=null;
   const pre=$('#wfs55-bundle-text');if(!pre)return;pre.textContent='';pre.hidden=true;
   $('#wfs55-bundle-copy').disabled=true;$('#wfs55-bundle-review').disabled=false;$('#wfs55-bundle-status').textContent='No bundle reviewed.';
+  $('#wfs57-bundle-note').disabled=true;
 }
 async function wfs55ReviewBundle(){
   if(activeTab!=='dock'||!isExpanded)return;
@@ -247,7 +279,7 @@ async function wfs55ReviewBundle(){
     const value=wfs55BundleText(items);
     if(ticket!==wfs55BundleTicket||selected.some(x=>wfs52ShelfHandles.get(x.key)!==x.file))return;
     wfs55Bundle={selected,value};pre.textContent=value;pre.hidden=false;
-    $('#wfs55-bundle-copy').disabled=false;status.textContent=items.length+' text files reviewed. Nothing copied or persisted.';
+    $('#wfs55-bundle-copy').disabled=false;wfs57BundleNoteState();status.textContent=items.length+' text files reviewed. Nothing copied or persisted.';
   }catch(e){if(ticket===wfs55BundleTicket)status.textContent='Bundle unavailable: '+(e.message||String(e));}
   finally{if(ticket===wfs55BundleTicket)$('#wfs55-bundle-review').disabled=false;}
 }
@@ -257,6 +289,21 @@ async function wfs55CopyBundle(){
   if(!confirm('Copy this reviewed text bundle to the system clipboard? Other apps may read it.'))return;
   try{await navigator.clipboard.writeText(review.value);if(wfs55Bundle===review)$('#wfs55-bundle-status').textContent='Reviewed bundle copied.';}
   catch{if(wfs55Bundle===review)$('#wfs55-bundle-status').textContent='Clipboard unavailable; no copy confirmed.';}
+}
+let wfs57BundleNoteBusy=false;
+function wfs57BundleNoteState(){
+  const button=$('#wfs57-bundle-note');if(!button)return;
+  button.disabled=wfs57BundleNoteBusy||appDataLoadStatus!=='ready'||!wfs55Bundle||!wfs57BundleNoteDraft(wfs55Bundle.value,$('#wfs57-bundle-title').value);
+}
+async function wfs57SaveBundleNote(){
+  const review=wfs55Bundle;
+  if(!review||wfs57BundleNoteBusy||activeTab!=='dock'||!isExpanded||appDataLoadStatus!=='ready')return;
+  if(review.selected.some(x=>wfs52ShelfHandles.get(x.key)!==x.file)){wfs55ClearBundle();return;}
+  const draft=wfs57BundleNoteDraft(review.value,$('#wfs57-bundle-title').value);if(!draft)return;
+  if(!confirm('Persist this complete reviewed bundle as a new local note? Original files remain unchanged.'))return;
+  wfs57BundleNoteBusy=true;wfs57BundleNoteState();
+  try{if(await mutation('create_note_from_draft',draft)){if(wfs55Bundle===review){wfs55ClearBundle();$('#wfs55-bundle-status').textContent='Reviewed bundle saved as a new local note.';}showInfo('New local bundle note created.');}}
+  finally{wfs57BundleNoteBusy=false;wfs57BundleNoteState();}
 }
 let wfs55MediaReceipt=null;
 function wfs55ClearMedia(){
@@ -298,6 +345,8 @@ function wfs55Init(){
   $('#wfs55-bundle-review').closest('details').addEventListener('toggle',wfs56RenderBundleChoices);
   $('#wfs55-bundle-copy').addEventListener('click',()=>void wfs55CopyBundle());
   $('#wfs55-bundle-clear').addEventListener('click',wfs55ClearBundle);
+  $('#wfs57-bundle-title').addEventListener('input',wfs57BundleNoteState);
+  $('#wfs57-bundle-note').addEventListener('click',()=>void wfs57SaveBundleNote());
   window.addEventListener('focus',()=>{if(wfs55OsAllowed&&activeTab==='settings'&&!wfs55OsBusy)void wfs55OsAction('check');});
   wfs55OsButtons();wfs55ClearAudio();wfs55ClearBundle();wfs56RenderBundleChoices();wfs56InitLandmarks();
 }

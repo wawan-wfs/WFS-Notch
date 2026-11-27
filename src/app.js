@@ -706,7 +706,8 @@ function setExpanded(expanded) {
         if(typeof wfs55StopOs==='function')wfs55StopOs();
         if(typeof wfs55ClearBundle==='function')wfs55ClearBundle();
         if(typeof wfs55ClearAudio==='function')wfs55ClearAudio();
-        if(typeof wfs55ClearMedia==='function')wfs55ClearMedia();
+        if(typeof suspendMediaDetails==='function'&&activeTab==='media')suspendMediaDetails();
+        else if(typeof wfs55ClearMedia==='function')wfs55ClearMedia();
       }
     } catch (error) { showError(error); }
   });
@@ -729,6 +730,7 @@ async function switchTab(tab) {
   // the Notes workspace flushes the active editor first.
   if (activeTab === 'notes' && !(await flushNote())) return false;
   if (request !== tabRequest) return false;
+  if(activeTab==='media'&&tab!=='media'&&typeof suspendMediaDetails==='function')suspendMediaDetails();
   activeTab = tab;
   if(tab!=='settings'&&typeof wfs55StopOs==='function')wfs55StopOs();
   if(tab!=='dock'&&typeof wfs55ClearBundle==='function')wfs55ClearBundle();
@@ -1782,6 +1784,7 @@ function bind() {
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && pendingDraft) void flushNote();
     if(document.hidden&&typeof wfs55StopOs==='function')wfs55StopOs();
+    if(document.hidden&&activeTab==='media'&&typeof suspendMediaDetails==='function')suspendMediaDetails();
   });
 }
 
