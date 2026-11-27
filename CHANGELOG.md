@@ -1,5 +1,7 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+- Add 48 workspace-specific section actions across all 16 modules, focus-safe disclosure expansion, responsive module layouts, exact navigation regression and browser acceptance coverage.
+
 ## Integrated recovery and package validation candidate
 
 - Fix actual CI 45849392294: WinRT InstalledPath, navigation collection selector and rustfmt diff. Preserve listener capability and all existing gates.

@@ -59,3 +59,23 @@ const fs56=[{key:'a',kind:'text'},{key:'b',kind:'text'},{key:'c',kind:'png'}],ha
 check56(sel56(fs56,handles56,new Set(['b'])).map(r=>r.key).join('')==='a','selective bundle');
 check56(sel56(fs56,new Map(),new Set()).length===0,'no handle no content');
 console.log('PASS: '+count56+' advanced history, audio, bundle and recovery assertions');
+
+const landmarks56=new Function(w55.slice(w55.indexOf('const wfs56Landmarks='),w55.indexOf('function wfs56JumpTo'))+'return wfs56Landmarks;')();
+assert.ok(Object.keys(landmarks56).length===16&&Object.values(landmarks56).every(rows=>rows.length===3&&new Set(rows.map(r=>r[1])).size===3),'16 workspaces with 48 independent landmarks');
+const panelIds56=fs.readFileSync('src/index.html','utf8');
+for(const [key,rows] of Object.entries(landmarks56)){
+  const from=panelIds56.indexOf('id="panel-'+key+'"');
+  const end=panelIds56.indexOf('<section class="panel"',from+1);
+  const block=panelIds56.slice(from,end===-1?panelIds56.indexOf('</main>',from):end);
+  assert.ok(from>=0&&rows.every(r=>block.includes('id="'+r[1]+'"')),'landmarks scoped to '+key);
+}
+const jump56=new Function('document',w55.slice(w55.indexOf('function wfs56JumpTo'),w55.indexOf('function wfs56InitLandmarks'))+'return wfs56JumpTo;');
+const parent56={tagName:'DETAILS',open:false,parentElement:null},target56={parentElement:parent56,hidden:false,disabled:false,matches:()=>false,closest:()=>null,hasAttribute:()=>false,setAttribute:(k,v)=>{target56[k]=v;},scrollIntoView:()=>{target56.scrolled=true;},focus:()=>{target56.focused=true;}};
+const panel56={contains:t=>t===target56,classList:{contains:()=>true}};parent56.parentElement=panel56;
+assert.ok(jump56({getElementById:()=>target56})(panel56,'target')&&parent56.open&&target56.focused&&target56.scrolled&&target56.tabindex==='-1','disclosure expansion and keyboard focus');
+assert.ok(!jump56({getElementById:()=>target56})({contains:()=>false},'target'),'cross-panel jump refused');
+console.log('PASS: 19 workspace landmark assertions (16 scoped maps, count and focus/refusal)');
+
+const app56=fs.readFileSync('src/app.js','utf8');
+assert.ok(app56.includes("$$('.tab').forEach(button => {")&&!/^\s*\$\('\.tab'\)\.forEach\(/m.test(app56),'navigation uses collection selector');
+console.log('PASS: navigation collection regression');

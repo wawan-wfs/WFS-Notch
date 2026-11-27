@@ -65,9 +65,7 @@ mod platform {
         if name != "WFSProject.WFSNotch" {
             return Err("package_unavailable");
         }
-        let folder = package
-            .InstalledPath()
-            .map_err(|_| "package_unavailable")?;
+        let folder = package.InstalledPath().map_err(|_| "package_unavailable")?;
         let manifest = std::path::PathBuf::from(folder.to_string()).join("AppxManifest.xml");
         let file = std::fs::File::open(manifest).map_err(|_| "manifest_unavailable")?;
         let mut bytes = Vec::new();

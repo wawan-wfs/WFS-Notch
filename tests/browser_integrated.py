@@ -132,6 +132,12 @@ with sync_playwright() as pw:
         expect(page.locator('#wfs52-seek-apply')).to_be_disabled()
         check(page.evaluate("()=>!nativeInvoke"),'no native simulation')
         check(page.locator('.wfs53-context').count()==16,'all module context surfaces')
+        check(page.locator('.wfs56-landmarks').count()==16,'all workspace landmark surfaces')
+        check(page.locator('.wfs56-landmarks button').count()==48,'all independent section actions')
+        page.evaluate("()=>switchTab('notes')")
+        page.locator('#panel-notes .wfs56-landmarks').get_by_role('button',name='Search',exact=True).click()
+        check(page.locator('#note-search').evaluate('(e)=>document.activeElement===e'),'workspace jump focuses existing control')
+        page.evaluate("()=>switchTab('media')")
         page.evaluate("""async()=>{
             await invoke('create_backup');
             const task=data.todos.find(t=>t.title==='Integrated task');

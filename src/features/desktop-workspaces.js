@@ -77,6 +77,54 @@ function wfs56RestoreRisk(review){
   return rows.filter(r=>r.removed||r.changed).sort((a,b)=>b.removed-a.removed||b.changed-a.changed);
 }
 
+// Each workspace exposes actual existing controls; no synthetic data or duplicated forms.
+const wfs56Landmarks={
+  home:[['Agenda','phase49-date'],['Find anything','phase50-search'],['Find free time','phase50-start']],
+  todos:[['New task','todo-input'],['Batch priorities','wfs52-task-search'],['History','todo-history-summary']],
+  notes:[['Search','note-search'],['Editor','note-title'],['Import / export','notes-transfer']],
+  calendar:[['New event','event-title'],['Month','calendar-today'],['ICS import','ics-import-data']],
+  system:[['CPU / memory','system-cpu'],['Device details','device-read'],['Audio routing','wfs55-audio-read']],
+  timer:[['Session','timer-display'],['Custom duration','phase51-focus-minutes'],['Cycles','focus-cycle']],
+  health:[['Water','health-water'],['Targets','phase51-water'],['Progress','phase51-health-progress']],
+  day:[['Time elapsed','day-clock'],['Tasks','day-task-progress'],['Events','day-event-list']],
+  countdown:[['Timer','countdown-display'],['Duration','countdown-minutes'],['Presets','countdown-presets-form']],
+  weather:[['Find city','weather-city'],['Forecast','weather-current'],['Rain threshold','phase51-rain-threshold']],
+  flashcards:[['Deck','flashcards-note'],['Practice','flashcard-face'],['Review mode','wfs52-review-mode']],
+  habits:[['New habit','habit-title'],['Check-ins','habit-list'],['Week history','phase50-habit-week']],
+  dock:[['Quick launch','builtin-list'],['File Shelf','shelf-search'],['Text bundle','wfs55-bundle-review']],
+  media:[['Now playing','now-playing'],['Player','media-player-picker'],['Seek','wfs52-seek']],
+  tools:[['Stopwatch','stopwatch-display'],['Password','password-generate'],['Calculator','math-input']],
+  settings:[['Appearance','ui-density'],['Notification privacy','wfs55-os-heading'],['Recovery','wfs53-restore-status']]
+};
+function wfs56JumpTo(panel,id){
+  const target=document.getElementById(id);
+  if(!target||!panel.contains(target)||!panel.classList.contains('active'))return false;
+  // Expand only containing disclosure sections. Never reveal arbitrary hidden editors.
+  for(let parent=target.parentElement;parent&&parent!==panel;parent=parent.parentElement){
+    if(parent.tagName==='DETAILS')parent.open=true;
+  }
+  if(target.hidden||target.closest('[hidden]'))return false;
+  const focusable=target.matches('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href],summary,[tabindex]');
+  if(!focusable&&!target.hasAttribute('tabindex'))target.setAttribute('tabindex','-1');
+  if(typeof target.scrollIntoView==='function')target.scrollIntoView({block:'nearest',behavior:'instant'});
+  if(!target.disabled&&typeof target.focus==='function')target.focus({preventScroll:true});
+  return true;
+}
+function wfs56InitLandmarks(){
+  for(const [key,items] of Object.entries(wfs56Landmarks)){
+    const panel=document.getElementById('panel-'+key),context=panel?.querySelector('.wfs53-context');
+    if(!context||context.querySelector('.wfs56-landmarks'))continue;
+    const nav=node('nav','wfs56-landmarks');nav.setAttribute('aria-label','Jump within '+key+' workspace');
+    for(const [label,id] of items){
+      if(!panel.contains(document.getElementById(id)))continue;
+      const button=node('button','secondary',label);button.type='button';
+      button.addEventListener('click',()=>{if(!wfs56JumpTo(panel,id))showInfo('This section is not available yet.');});
+      nav.append(button);
+    }
+    context.append(nav);
+  }
+}
+
 let wfs55OsTicket=0,wfs55OsBusy=false,wfs55OsAllowed=false,wfs55History=[],wfs55Current=[];
 const wfs55OsMessages={unpackaged:'Package identity unavailable (standard NSIS/portable). Optional MSIX required.',package_unavailable:'WFS package identity unavailable.',manifest_unavailable:'Installed package manifest could not be verified.',missing_capability:'Installed package does not declare userNotificationListener.',listener_unavailable:'Windows notification listener unavailable.',permission_request_unavailable:'Windows permission prompt unavailable.',denied:'Windows denied access. Change permissions in Windows Settings if desired.',unspecified:'Windows permission has not been granted.',allowed:'Windows permission allowed. Explicit session consent still required.',session_stopped:'Session stopped before permission completed.',unsupported:'Windows packaged listener required.'};
 function wfs55OsButtons(){
@@ -232,7 +280,7 @@ function wfs55RenderImpact(review){
   const host=$('#wfs55-restore-impact');if(!host)return;
   const result=wfs55Impact(review);
   host.textContent=result?'Impact across five record types: '+result.added+' added · '+result.removed+' removed · '+result.changed+' changed. Settings and reminder protections handled separately.':'No impact reviewed.';
-  const risk=$('#wfs56-restore-risk');risk.replaceChildren();
+  const risk=$('#wfs56-restore-risk');if(!risk)return;risk.replaceChildren();
   if(review)for(const row of wfs56RestoreRisk(review))risk.append(node('li','',row.key+': '+row.removed+' removed, '+row.changed+' changed'));
 }
 function wfs55Init(){
@@ -251,6 +299,6 @@ function wfs55Init(){
   $('#wfs55-bundle-copy').addEventListener('click',()=>void wfs55CopyBundle());
   $('#wfs55-bundle-clear').addEventListener('click',wfs55ClearBundle);
   window.addEventListener('focus',()=>{if(wfs55OsAllowed&&activeTab==='settings'&&!wfs55OsBusy)void wfs55OsAction('check');});
-  wfs55OsButtons();wfs55ClearAudio();wfs55ClearBundle();wfs56RenderBundleChoices();
+  wfs55OsButtons();wfs55ClearAudio();wfs55ClearBundle();wfs56RenderBundleChoices();wfs56InitLandmarks();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wfs55Init,{once:true});else wfs55Init();

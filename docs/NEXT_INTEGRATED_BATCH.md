@@ -1,3 +1,7 @@
+# Continuation — workspace acceptance
+
+Verify the final candidate CI and new package validation report; resolve any exact compile, lint, browser or MakeAppx failures before new publication. New 48 workspace landmarks and tailored layouts require screenshot and keyboard acceptance, not a full redesign claim. Use actual packaged Windows 10/11 with a trusted signer for consent/revocation and native device acceptance. Preserve all existing gates and Development First / Integrated CI Last.
+
 # Next integrated development and acceptance
 
 Start from the latest dev/phase53-integrated-candidate commit. Check exact CI and all logs. Candidate repairs run 45849392294 (InstalledLocation E0599, single-element navigation selector, rustfmt). Adds notification filters and app counts, role grouping, selective bundle, restore risk, visible-only media refresh, and additional unsigned MSIX pack/unpack validation inside one existing Windows build job. Do not treat unsigned pack validation as signed installation or consent. Actual Windows 10/11 physical device and packaged permission tests remain required, with authorized trusted signing certificate; continue native GSMTC, audio, notification, Shelf, recovery, performance and independent redesign of 16 modules. Retain measured historical parity 28.9% pending actual 38-category comparison. Development First, Integrated CI Last; no auto-deployment, force push or reduced gates.

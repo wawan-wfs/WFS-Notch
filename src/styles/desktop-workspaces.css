@@ -25,3 +25,27 @@
 @media(forced-colors:active){.wfs55-role-card,.wfs55-notification-row,.wfs55-bundle-text{border-color:ButtonText}}
 
 .wfs56-bundle-choices{max-height:140px;overflow:auto;margin:6px 0;border:1px solid var(--line);border-radius:10px;padding:6px}.wfs56-bundle-choice{display:flex;align-items:center;gap:8px;padding:5px;min-width:0;overflow-wrap:anywhere;color:var(--text);font-size:11px}.wfs56-bundle-choice input{flex:none}.wfs56-bundle-choice span{min-width:0}.wfs55-notifications .workspace-filters{margin-top:8px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.wfs55-notifications select{max-width:100%;min-width:0}.wfs56-restore-risk{margin:4px 0;padding-inline-start:18px;font-size:11px;color:var(--text)}.wfs56-restore-risk:empty{display:none}
+
+/* Workspace landmarks and independent, responsive content rhythm. */
+.wfs53-context:has(.wfs56-landmarks){display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center}
+.wfs56-landmarks{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px;padding-top:5px;border-top:1px solid var(--line);min-width:0}
+.wfs56-landmarks button{font-size:10px;line-height:1.25;padding:5px 8px;max-width:100%;white-space:normal;text-align:left}
+.wfs56-landmarks button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#panel-home .home-grid{grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch}
+#panel-todos .todo-option-fields{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#panel-notes .note-layout{grid-template-columns:minmax(105px,0.85fr) minmax(0,2fr)}#panel-notes .note-search-row{display:flex;flex-wrap:wrap}
+#panel-calendar .calendar-toolbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}
+#panel-system .system-grid .system-card{display:grid;gap:5px}#panel-system .system-detail-columns{gap:7px}
+#panel-timer .timer-controls{display:grid;gap:8px}#panel-timer .preset-row{display:flex;flex-wrap:wrap;gap:5px}
+#panel-health .health-grid .system-card{display:grid;align-content:start;gap:6px}
+#panel-day .progress-caption{display:flex;align-items:baseline;justify-content:space-between;gap:6px}
+#panel-countdown .countdown-form{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+#panel-weather .weather-days{display:grid;grid-template-columns:repeat(auto-fit,minmax(76px,1fr));gap:6px}
+#panel-flashcards .flashcard-face{display:grid;align-content:center;text-align:center}
+#panel-habits .phase50-habit-scroll{overflow:auto;max-width:100%}
+#panel-dock .shelf-toolbar{display:flex;flex-wrap:wrap;gap:6px}
+#panel-media .selected-player-actions{display:flex;flex-wrap:wrap;gap:5px}#panel-media .selected-player-actions button{flex:1 1 auto}
+#panel-tools .tools-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+#panel-settings .display-inputs{display:flex;flex-wrap:wrap;gap:6px}#panel-settings .settings-row{gap:8px}
+@media(max-width:560px){#panel-home .home-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#panel-notes .note-layout{grid-template-columns:minmax(80px,0.8fr) minmax(0,1.4fr)}#panel-tools .tools-grid{grid-template-columns:1fr}.wfs56-landmarks button{padding:4px 6px}}
+@media(forced-colors:active){.wfs56-landmarks{border-color:ButtonText}.wfs56-landmarks button:focus-visible{outline-color:Highlight}}
