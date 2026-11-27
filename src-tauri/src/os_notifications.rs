@@ -30,13 +30,13 @@ mod platform {
     use super::*;
     use std::io::Read;
     use std::sync::atomic::AtomicBool;
+    use windows::core::HSTRING;
     use windows::ApplicationModel::Package;
     use windows::Data::Xml::Dom::XmlDocument;
     use windows::UI::Notifications::{
         Management::{UserNotificationListener, UserNotificationListenerAccessStatus as Access},
         NotificationKinds,
     };
-    use windows::core::HSTRING;
 
     static BUSY: AtomicBool = AtomicBool::new(false);
 
@@ -66,8 +66,7 @@ mod platform {
             return Err("package_unavailable");
         }
         let folder = package
-            .InstalledLocation()
-            .and_then(|folder| folder.Path())
+            .InstalledPath()
             .map_err(|_| "package_unavailable")?;
         let manifest = std::path::PathBuf::from(folder.to_string()).join("AppxManifest.xml");
         let file = std::fs::File::open(manifest).map_err(|_| "manifest_unavailable")?;
@@ -133,8 +132,7 @@ mod platform {
         let value: String = value
             .chars()
             .filter(|c| {
-                !c.is_control()
-                    && !matches!(*c, '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}')
+                !c.is_control() && !matches!(*c, '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}')
             })
             .take(120)
             .collect();
@@ -177,7 +175,9 @@ mod platform {
                 .GetAt(index)
                 .map_err(|_| "Cannot read notification metadata")?;
             let id = item.Id().map_err(|_| "Missing notification identity")?;
-            let time = item.CreationTime().map_err(|_| "Missing notification time")?;
+            let time = item
+                .CreationTime()
+                .map_err(|_| "Missing notification time")?;
             let Some(at_ms) = unix_ms(time.UniversalTime) else {
                 continue;
             };

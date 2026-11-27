@@ -734,7 +734,7 @@ async function switchTab(tab) {
   if(tab!=='dock'&&typeof wfs55ClearBundle==='function')wfs55ClearBundle();
   if(tab!=='system'&&typeof wfs55ClearAudio==='function')wfs55ClearAudio();
   if(tab!=='media'&&typeof wfs55ClearMedia==='function')wfs55ClearMedia();
-  $('.tab').forEach(button => {
+  $$('.tab').forEach(button => {
     const selected = button.dataset.tab === tab;
     button.classList.toggle('active', selected);
   });

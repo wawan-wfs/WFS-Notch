@@ -41,3 +41,21 @@ test55(m55.wfs55MediaResult(receipt55,{source:'player',playback_status:'Paused'}
 test55(m55.wfs55MediaResult(receipt55,{source:'player',playback_status:'Playing'},20000)==='unavailable','stale receipt');
 test55(m55.wfs55Impact({tasks:{added:1,removed:2,changed:3},notes:{added:2,removed:0,changed:1},events:{added:0,removed:0,changed:0},habits:{added:0,removed:0,changed:0},links:{added:1,removed:1,changed:0}}).changed===4,'aggregate impact');
 console.log('PASS: '+added55+' desktop workspace model assertions');
+
+const m56=new Function(w55.slice(w55.indexOf('function wfs56NotificationView'),w55.indexOf('let wfs55OsTicket'))+'return {wfs56NotificationView,wfs56AudioGroups,wfs56RestoreRisk};')();
+let count56=0;const check56=(v,k)=>{assert.ok(v,k);count56++;};
+const rows56=[{id:1,at_ms:10000000,app:'Mail'},{id:2,at_ms:9000000,app:'Chat'},{id:3,at_ms:1000,app:'Mail'}];
+check56(m56.wfs56NotificationView(rows56,[rows56[0]],'','current',10000000,'all').rows.length===1,'current only');
+check56(m56.wfs56NotificationView(rows56,[rows56[0]],'mail','previous',10000000,'all').rows[0].id===3,'previous app query');
+check56(m56.wfs56NotificationView(rows56,[],'','all',10000000,'hour').rows.length===2,'last hour');
+check56(m56.wfs56NotificationView(rows56,[],'','all',10000000,'all').apps[0][1]===2,'group counts');
+check56(throws55(()=>m56.wfs56NotificationView(rows56,[],'','invalid',10000000,'all')),'invalid filter');
+check56(m56.wfs56AudioGroups(roles55).join('')==='multimedia / console','group summary');
+const risk56={tasks:{added:0,removed:1,changed:2},notes:{added:0,removed:2,changed:0},events:{added:1,removed:0,changed:0},habits:{added:0,removed:0,changed:0},links:{added:0,removed:0,changed:0}};
+check56(m56.wfs56RestoreRisk(risk56).map(r=>r.key).join(',')==='notes,tasks','risk ordering');
+check56(m56.wfs56RestoreRisk(null)===null,'no review');
+const sel56=new Function('wfs52PreviewKind','wfs52ShelfKey',w55.slice(w55.indexOf('function wfs56BundleSelection'),w55.indexOf('function wfs56RestoreRisk'))+'return wfs56BundleSelection;')(r=>r.kind,r=>r.key);
+const fs56=[{key:'a',kind:'text'},{key:'b',kind:'text'},{key:'c',kind:'png'}],handles56=new Map([['a',1],['b',2],['c',3]]);
+check56(sel56(fs56,handles56,new Set(['b'])).map(r=>r.key).join('')==='a','selective bundle');
+check56(sel56(fs56,new Map(),new Set()).length===0,'no handle no content');
+console.log('PASS: '+count56+' advanced history, audio, bundle and recovery assertions');

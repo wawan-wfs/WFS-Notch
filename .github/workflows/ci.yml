@@ -276,3 +276,30 @@ jobs:
           path: src-tauri/target/release/wfs-notch.exe
           retention-days: 30
           if-no-files-found: error
+
+      - name: Validate optional unsigned MSIX package (no install or trust changes)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $sdk = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'x64\makeappx.exe') } | Sort-Object Name -Descending | Select-Object -First 1
+          if (-not $sdk) { throw 'Windows SDK MakeAppx missing' }
+          $env:PATH = (Join-Path $sdk.FullName 'x64') + ';' + $env:PATH
+          ./scripts/build-notification-msix.ps1 -Exe 'src-tauri/target/release/wfs-notch.exe' -PackageValidationOnly -Output 'build-evidence/WFSNotch-validation-unsigned.msix'
+          & makeappx.exe unpack /p 'build-evidence/WFSNotch-validation-unsigned.msix' /d 'build-evidence/msix-unpacked'
+          if ($LASTEXITCODE -ne 0) { throw 'MSIX unpack validation failed' }
+          $sourceHash = (Get-FileHash 'src-tauri/target/release/wfs-notch.exe' -Algorithm SHA256).Hash
+          $packedHash = (Get-FileHash 'build-evidence/msix-unpacked/wfs-notch.exe' -Algorithm SHA256).Hash
+          if ($sourceHash -ne $packedHash) { throw 'MSIX executable differs from exact CI build' }
+          [xml]$manifest = Get-Content -Raw 'build-evidence/msix-unpacked/AppxManifest.xml'
+          if ($manifest.Package.Identity.Name -ne 'WFSProject.WFSNotch') { throw 'MSIX identity mismatch' }
+          $cap = $manifest.SelectSingleNode("//*[local-name()='Capability' and namespace-uri()='http://schemas.microsoft.com/appx/manifest/uap/windows10/3' and @Name='userNotificationListener']")
+          if (-not $cap) { throw 'Missing notification listener capability' }
+          @("commit=$env:GITHUB_SHA","exe_sha256=$sourceHash","unsigned_msix_sha256=$((Get-FileHash 'build-evidence/WFSNotch-validation-unsigned.msix' -Algorithm SHA256).Hash)","package_validation=passed","installation_and_consent=not_tested") | Set-Content 'build-evidence/MSIX_VALIDATION.txt'
+          Get-Content 'build-evidence/MSIX_VALIDATION.txt'
+      - name: Upload MSIX validation report only
+        uses: actions/upload-artifact@v4
+        with:
+          name: WFSNotch-MSIX-validation
+          path: build-evidence/MSIX_VALIDATION.txt
+          retention-days: 30
+          if-no-files-found: error

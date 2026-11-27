@@ -345,6 +345,7 @@ function wfs52RenderFileChoices(){
   $('#wfs52-file-open').disabled=!select.value;$('#wfs52-file-forget').disabled=!rows.length;
   if(wfs52PreviewKey&&wfs52PreviewKey!==select.value)wfs52ClearFilePreview();
   if(typeof wfs53ShelfNoteState==='function')wfs53ShelfNoteState();
+  if(typeof wfs56RenderBundleChoices==='function')wfs56RenderBundleChoices();
 }
 async function wfs52OpenFile(){
   const key=$('#wfs52-file-select').value,file=wfs52ShelfHandles.get(key);

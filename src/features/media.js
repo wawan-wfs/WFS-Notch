@@ -65,14 +65,14 @@ async function refreshMediaDetails(force = false) {
   if(mediaControlPending&&!force)return;
   if (mediaDetailsPending) { if (force) mediaRefreshRequested = true; return; }
   const panel = document.querySelector('#panel-media');
-  if (!panel?.classList.contains('active')) return;
+  if (!panel?.classList.contains('active')||document.querySelector('#expanded')?.hidden||document.hidden) return;
   if (!force && Date.now() - mediaDetailsLastAt < 5000) return;
   mediaDetailsPending = true;
   const readSequence=++mediaReadSequence;
   try {
     const active = await readMediaWithDeadline('get_active_media_session');
     const sessions = await readMediaWithDeadline('list_media_sessions');
-    if(!panel.classList.contains('active'))return;
+    if(!panel.classList.contains('active')||document.querySelector('#expanded')?.hidden||document.hidden)return;
     renderSelectedPlayers(sessions, active?.source);
     const picker = document.querySelector('#media-player-picker');
     const selected = picker.value;
@@ -87,7 +87,7 @@ async function refreshMediaDetails(force = false) {
     }
     const snapshot = selected && selected !== active?.source
       ? await readMediaWithDeadline('get_media_session_by_source', { source: selected }) : active;
-    if (!panel.classList.contains('active') || picker.value !== selected) return;
+    if (!panel.classList.contains('active') || picker.value !== selected || document.querySelector('#expanded')?.hidden || document.hidden) return;
     if (selected && (!snapshot || snapshot.source !== selected)) {
       mediaNeedsSelection = true;
       renderSelectedPlayers(sessions, active?.source);

@@ -1,5 +1,11 @@
 ## 0.44.0 — Source wall-time calendar series moves
 
+## Integrated recovery and package validation candidate
+
+- Fix actual CI 45849392294: WinRT InstalledPath, navigation collection selector and rustfmt diff. Preserve listener capability and all existing gates.
+- Add notification presence/age filters, grouped app counts, audio endpoint grouping, selective Shelf bundles, risk-ranked restore review and visible-only media refresh. Add unsigned MSIX pack/unpack exact EXE and manifest validation in the existing consolidated CI; no signing trust change or installation.
+- New model and Chromium test coverage; native installation/consent and physical device acceptance remain pending.
+
 ## Integrated desktop workspaces candidate
 
 - Optional WinRT OS notification metadata listener with package identity/manifest verification, UI-thread permission request, explicit session consent, read-on-demand, bounded in-memory observed history and stop/clear guards. Normal NSIS/portable remains fail-closed; optional MSIX build/sign recipe requires a trusted certificate and real Windows acceptance.

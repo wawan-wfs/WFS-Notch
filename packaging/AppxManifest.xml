@@ -6,7 +6,7 @@
  IgnorableNamespaces="uap uap3 rescap">
   <Identity Name="WFSProject.WFSNotch" Publisher="CN=WFS Project" Version="0.45.0.0" ProcessorArchitecture="x64"/>
   <Properties><DisplayName>WFS Notch</DisplayName><PublisherDisplayName>WFS Project</PublisherDisplayName><Logo>Assets\StoreLogo.png</Logo></Properties>
-  <Dependencies><TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0"/></Dependencies>
+  <Dependencies><TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0"/></Dependencies>
   <Resources><Resource Language="en-us"/></Resources>
   <Applications>
     <Application Id="WFSNotch" Executable="wfs-notch.exe" EntryPoint="Windows.FullTrustApplication">
